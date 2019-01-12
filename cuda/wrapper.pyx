@@ -17,7 +17,7 @@ cdef extern from "src/gframe.hh":
     cdef cppclass C_gframe "gframe":
         C_gframe(np.float32_t*, int, int)
         void operateOnSection(int, int, int, int)
-        void gpuOperation_this(char*, int, int, int, int, float*, int, bool)
+        void gpuOperation_thisOther(char*, int, int, int, int, float*, int, bool)
         void retreive_results(np.float32_t*)
         void retreive_results_shape(np.int32_t*)
         void retreive_array(np.float32_t*)
@@ -73,6 +73,10 @@ cdef class gframe:
         self.g = new C_gframe(&arr[0], self.numRows, self.numColumns)
 
 
+    def getColumnKeys(self):
+        return self._columnKeys
+
+
     def getColumn(self, colKey):
         if colKey in self._columnKeys:
             return self._columnKeys[colKey]
@@ -88,20 +92,48 @@ cdef class gframe:
         self.g.operateOnSection(minRow, maxRow, minCol, maxCol)
 
 
-    def gpuOperation_this(self, char* opType, int this_lowerRow, int this_upperRow, int this_lowerCol, int this_upperCol, np.ndarray[ndim=1, dtype=np.float32_t] other, bool inPlace):
+    def gpuOperation_thisOther(self, char* opType, int this_lowerRow, int this_upperRow, int this_lowerCol, int this_upperCol, np.ndarray[ndim=1, dtype=np.float32_t] other, bool inPlace):
         print('Cython add inPlace=', inPlace)
 
         #self.g.gpuOperation_this('add'.encode(), this_lowerRow, this_upperRow, this_lowerCol, this_upperCol, &other[0], len(other), inPlace)
-        self.g.gpuOperation_this(opType, this_lowerRow, this_upperRow, this_lowerCol, this_upperCol, &other[0], len(other), inPlace)
+        self.g.gpuOperation_thisOther(opType, this_lowerRow, this_upperRow, this_lowerCol, this_upperCol, &other[0], len(other), inPlace)
 
 
-    def concat(self, np.ndarray[ndim=1, dtype=np.float32_t] newArray, int newNumRows, int newNumCols, int axis):
+    def _generateUniqueHeader(self, keyBase):
+        # keyBase is the requested value, iterate on this until we find something unique
+        key = keyBase
+        iter = 1
+        while key in self._columnKeys:
+            key = keyBase + '-' + str(iter)
+            iter += 1
+            if iter >= 1000:
+                raise ValueError('Reached maxed allowable iterations for header generation')
+        return key
+
+
+
+    def concat(self, np.ndarray[ndim=1, dtype=np.float32_t] newArray, int newNumRows, int newNumCols, int axis, columnKeys):
         # concatenate newArray to existing array in memory
         self.g.concat(&newArray[0], newNumRows, newNumCols, axis)
         if axis == 0:
             self.numRows += newNumRows
         elif axis == 1:
-            self.numColumns += newNumCols
+
+            if len(self._columnKeys) > 0: # so we have existing headers, need to assign headers to the newly added columns
+
+                for n in range(newNumCols):
+                    newColInd = self.numColumns + n
+
+                    if columnKeys is not None and n < len(columnKeys):
+                        keyBase = columnKeys[n]
+                    else:
+                        keyBase = str(n)
+
+                    key = self._generateUniqueHeader(keyBase)
+                    self._columnKeys[key] = newColInd
+
+
+            self.numColumns += newNumCols # add this after the above headers have been taken care of
 
 
     def retreive_results(self):

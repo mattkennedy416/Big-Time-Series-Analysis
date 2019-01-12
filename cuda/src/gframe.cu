@@ -161,7 +161,7 @@ void gframe::gpuOperation_thisOther(char* operationType, int this_lowerRow, int 
 }
 
 
-
+/*
 void gframe::gpuOperation_thisThis(char* operationType, int this1_lowerRow, int this1_upperRow, int this1_lowerCol, int this1_upperCol, int this2_lowerRow, int this2_upperRow, int this2_lowerCol, int this2_upperCol, bool inPlace) {
 
 	printf("Operation Type: %s\n", operationType);
@@ -250,7 +250,7 @@ void gframe::gpuOperation_thisThis(char* operationType, int this1_lowerRow, int 
 	cudaFree(other_device);
 
 }
-
+*/
 
 
 
