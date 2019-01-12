@@ -40,44 +40,6 @@ class gframe_slice():
         self.rows = rows
         self.columns = columns
 
-        # if isinstance(self.rows, slice):
-        #     if self.rows.start is None:
-        #         self.this_lowerRow = 0
-        #     else:
-        #         self.this_lowerRow = self.rows.start
-        #
-        #     if self.rows.stop is None:
-        #         self.this_upperRow = self.parent.numRows
-        #     else:
-        #         self.this_upperRow = self.rows.stop
-        #
-        # elif isinstance(self.rows,(int, np.int)):
-        #     self.this_lowerRow = self.rows
-        #     self.this_upperRow = self.rows + 1
-        #
-        # else:
-        #     self.this_lowerRow = min(self.rows)
-        #     self.this_upperRow = max(self.rows) + 1
-        #
-        #
-        # if isinstance(self.columns, slice):
-        #     if self.columns.start is None:
-        #         self.this_lowerCol = 0
-        #     else:
-        #         self.this_lowerCol = self.columns.start
-        #
-        #     if self.columns.stop is None:
-        #         self.this_upperCol = self.parent.numCols
-        #     else:
-        #         self.this_upperCol = self.columns.stop
-        #
-        # elif isinstance(self.columns,(int, np.int)):
-        #     self.this_lowerCol = self.columns
-        #     self.this_upperCol = self.columns + 1
-        #
-        # else:
-        #     self.this_lowerCol = min(self.columns)
-        #     self.this_upperCol = max(self.columns) + 1
 
         self.this_lowerRow, self.this_upperRow = _indexingParser(self.rows, self.parent.numRows)
         self.this_lowerCol, self.this_upperCol = _indexingParser(self.columns, self.parent.numColumns)
@@ -185,6 +147,15 @@ class gframe():
         elif isinstance(item, str):
             colInd = self._frame.getColumn(item)
             return gframe_slice(parent=self, rows=slice(None,None,None), columns=colInd)
+        elif isinstance(item, list):
+            colInds = []
+            for subitem in item:
+                if isinstance(subitem, int):
+                    colInds.append(subitem)
+                elif isinstance(subitem, str):
+                    colInd = self._frame.getColumn(subitem)
+                    colInds.append(colInd)
+            return gframe_slice(parent=self, rows=slice(None,None,None), columns=colInds)
 
 
     def _gpuOperation_thisOther(self, operationType, this_lowerRow, this_upperRow, this_lowerCol, this_upperCol, other, inPlace):
@@ -260,7 +231,7 @@ if __name__ == '__main__':
 
     other = np.random.rand(size, size)
 
-    a = myFrame['b']
+    a = myFrame[['b', 'c']]
     print(a)
 
     myFrame['g'] = np.random.rand(2500)
