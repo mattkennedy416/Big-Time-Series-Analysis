@@ -235,6 +235,8 @@ cdef class gframe:
         returnNumRows = self.numRows
         returnNumCols = self.numColumns
 
+        print('Cython: retreiving array of shape(', returnNumRows, returnNumCols,')')
+
         cdef np.ndarray[ndim=1, dtype=np.float32_t] flattenedArray = np.zeros(returnNumRows*returnNumCols, dtype=np.float32)
         self.g.retreive_array(&flattenedArray[0])
 

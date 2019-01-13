@@ -254,13 +254,15 @@ if __name__ == '__main__':
     #a = myFrame[['b', 'c']]
     #print(a)
 
+    frameValues1 = myFrame._frame.retreive_array()
+
     myFrame['g'] = np.random.rand(size)
 
-    frameValues = myFrame._frame.retreive_array()
+    frameValues2 = myFrame._frame.retreive_array()
 
 
 
-    c = myFrame.sort('g')
+    c = myFrame.sort('a')
     print(c)
 
     # next step is going to be getting the column keys up and running

@@ -347,43 +347,53 @@ void gframe::concat(float* newArray, int newNumRows, int newNumCols, int axis) {
 	printf("Original Length: %i -- adding (%i,%i)=%i\n", arraySize/sizeof(float), newNumRows, newNumCols, newNumRows*newNumCols);
 	size_t newSize = arraySize + newNumRows*newNumCols*sizeof(float);
 
-	// next lets try to realloc the host copy
-	array_host = (float *)realloc(array_host, newSize);
 
-	// so actually the problem with realloc is that they aren't going to be in the correct order anymore ... does it just straight up add it at the end I assume?
-	// we need to go through this in two stages -- first get the original data in the new correct indices, and then fill in the new data
-
-	printf("Moving original data...\n");
-	for (int m=this_totalColumns; m>0; m--) // need to walk backwards to make sure we don't step on ourselves, also think we need to do m first?
+	
+	// I think the realloc() might be messing with the indexing of our original data, lets first copy it out and then back
+	float* origDataTemp = (float* )malloc(arraySize);
+	for (int n=0; n<arraySize/sizeof(float); n++)
+		origDataTemp[n] = array_host[n];
+	
+	array_host = (float *)realloc(array_host, newSize); // and now realloc the original array
+	
+	// and lets just overwrite everything 
+	// (yes this can be compressed more, but wrote everything out explicitly to ensure the logic makes since
+	for (int n=0; n<new_totalRows; n++)
 	{
-		for (int n=this_totalRows; n>0; n--)
+		for (int m=0; m<new_totalColumns; m++)
 		{
-			int curInd = n*this_totalColumns + m; // current index
-			int newInd = n*new_totalColumns + m; // new index we're moving to
-
-			array_host[curInd] = array_host[newInd];
+			// so here we have n and m being the final indices of our new array, we now need to figure out where that data should be pulled from
+			if (axis==0 && n<this_totalRows) // adding rows and current ind is in the old data
+			{
+				int oldInd = n*this_totalColumns + m; // from original data
+				int newInd = n*new_totalColumns + m; // to new array
+				array_host[newInd] = origDataTemp[oldInd];
+			}
+			else if (axis == 0 && n >= this_totalRows) // adding new rows and current ind is in the new data
+			{
+				int oldInd = n*newNumCols + m; // relative to new data
+				int newInd = n*new_totalColumns + m; // to new array
+				array_host[newInd] = newArray[oldInd];
+			}
+			else if (axis==1 && m<this_totalColumns) // adding columns and current ind is in the old data
+			{
+				int oldInd = n*this_totalColumns + m; // from original data
+				int newInd = n*new_totalColumns + m; // to new array
+				array_host[newInd] = origDataTemp[oldInd];
+			}
+			else if (axis == 1 && m >= this_totalColumns) // adding new columns and current ind is in the new data
+			{
+				int oldInd = n*newNumCols + m; // relative to new data
+				int newInd = n*new_totalColumns + m; // to ne array
+				array_host[newInd] = newArray[oldInd];
+			}
+			
 		}
 	}
-
-	printf("Adding new data ...\n");
-	// so hopefully that's good ... now go through the new values
-	for (int n=0; n<newNumRows; n++) // shouldn't matter what order we iterate through
-	{
-		for (int m=0; m<newNumCols; m++)
-		{
-			int relativeInd = n*newNumCols + m;
-
-			// so these n and m are relative to the new matrix, need to convert them to absolute depending on the concatenation axis
-			int absInd;
-			if (axis==0)
-				absInd = (n+this_totalRows)*new_totalColumns + m; // column will still be the same, just need to offset the row
-			else if (axis==1)
-				absInd = n*new_totalColumns + (m+this_totalColumns); // row will still be the same, just need to offset the column
-
-			//printf("copying from relative %i to (%i,%i)=%i of %i\n", relativeInd, n, m, absInd, newSize/sizeof(float));
-			array_host[absInd] = newArray[relativeInd];
-		}
-	}
+	
+	free(origDataTemp);
+	
+	
 
 	// lets update the global variables
 	this_totalRows = new_totalRows;
@@ -433,7 +443,7 @@ void gframe::retreive_array(float* numpyArray) {
 	// so we already know what the length should be
 
 
-	printf("retreive_array\n");
+	printf("C++: retreive_array of shape (%i,%i)\n\n", this_totalRows, this_totalColumns);
 
 	updateHostFromGPU();
 
