@@ -1,6 +1,6 @@
 
 import numpy as np
-import gutil
+import gts
 from copy import copy
 
 
@@ -37,23 +37,23 @@ class gframe_slice():
 
     def __init__(self, parent, rows, columns):
         self.parent = parent
-        self.rows = rows
+        self.rows = rows # lets actually allow the rows and columns to retain their original value
         self.columns = columns
 
 
-        self.this_lowerRow, self.this_upperRow = _indexingParser(self.rows, self.parent.numRows)
-        self.this_lowerCol, self.this_upperCol = _indexingParser(self.columns, self.parent.numColumns)
+        # self.this_lowerRow, self.this_upperRow = _indexingParser(self.rows, self.parent.numRows)
+        # self.this_lowerCol, self.this_upperCol = _indexingParser(self.columns, self.parent.numColumns)
 
     def getUID(self):
         return self.parent.getUID()
 
 
     def __add__(self, other): # and this is the +
-        return self.parent._gpuOperation_thisOther('add', self.this_lowerRow, self.this_upperRow, self.this_lowerCol, self.this_upperCol, other, inPlace=False)
+        return self.parent._gpuOperation_thisOther('add', self.rows, self.columns, other, inPlace=False)
 
 
     def __iadd__(self, other): # so this is the +=
-        self.parent._gpuOperation_thisOther('add', self.this_lowerRow, self.this_upperRow, self.this_lowerCol, self.this_upperCol, other, inPlace=True)
+        self.parent._gpuOperation_thisOther('add', self.rows, self.columns, other, inPlace=True)
 
 
 
@@ -79,10 +79,10 @@ class grframe_rolling():
         self.window = width
 
         if isinstance(parent, gframe_slice):
-            self.lowerRow = parent.this_lowerRow
-            self.upperRow = parent.this_upperRow
-            self.lowerCol = parent.this_lowerCol
-            self.upperCol = parent.this_upperCol
+            # self.lowerRow = parent.this_lowerRow
+            # self.upperRow = parent.this_upperRow
+            # self.lowerCol = parent.this_lowerCol
+            # self.upperCol = parent.this_upperCol
             self.rows = parent.rows
             self.columns = parent.columns
 
@@ -91,8 +91,8 @@ class grframe_rolling():
                 raise ValueError('Rows and Columns must be specified')
             self.rows = rows
             self.columns = columns
-            self.this_lowerRow, self.this_upperRow = _indexingParser(self.rows, self.parent.numRows)
-            self.this_lowerCol, self.this_upperCol = _indexingParser(self.columns, self.parent.numColumns)
+            # self.this_lowerRow, self.this_upperRow = _indexingParser(self.rows, self.parent.numRows)
+            # self.this_lowerCol, self.this_upperCol = _indexingParser(self.columns, self.parent.numColumns)
 
         else:
             raise NotImplementedError('Unable to parse input of type '+str(type(parent)))
@@ -133,7 +133,7 @@ class gframe():
         # c++ class, the c++ class will segfault... probably not happy about how python is internally keeping track of the object?
         # fortunately passing a copy of this object to the c++ class seems to fix any potential issues
         # --> fixed? think this was caused by us trying to directly write to the original python variable in c++
-        self._frame = gutil.gframe(arr, self.numRows, self.numColumns, self.columns)
+        self._frame = gts.gframe(arr, self.numRows, self.numColumns, self.columns)
 
 
 
@@ -147,7 +147,7 @@ class gframe():
         elif isinstance(item, str):
             colInd = self._frame.getColumn(item)
             return gframe_slice(parent=self, rows=slice(None,None,None), columns=colInd)
-        elif isinstance(item, list):
+        elif isinstance(item, list): # list of column inds
             colInds = []
             for subitem in item:
                 if isinstance(subitem, int):
@@ -157,14 +157,30 @@ class gframe():
                     colInds.append(colInd)
             return gframe_slice(parent=self, rows=slice(None,None,None), columns=colInds)
 
+        elif isinstance(item, tuple): # we should assume this is (rows, columns)
+            return gframe_slice(parent=self, rows=item[0], columns=item[1])
 
-    def _gpuOperation_thisOther(self, operationType, this_lowerRow, this_upperRow, this_lowerCol, this_upperCol, other, inPlace):
+
+    # def _gpuOperation_thisOther(self, operationType, this_lowerRow, this_upperRow, this_lowerCol, this_upperCol, other, inPlace):
+    #     # "other" is an arbitrary vector which needs to be copied up to the gpu
+    #
+    #     other = other.reshape(other.size, ).astype(np.float32)
+    #     operationType = operationType.encode()
+    #
+    #     self._frame.gpuOperation_this( operationType, this_lowerRow, this_upperRow, this_lowerCol, this_upperCol, other, inPlace )
+    #
+    #     # so we don't necessarily know who called this, but results should always be the same ...
+    #     if not inPlace:
+    #         return self._frame.retreive_results()
+
+
+    def _gpuOperation_thisOther(self, operationType, this_rowSelection, this_colSelection, other, inPlace):
         # "other" is an arbitrary vector which needs to be copied up to the gpu
 
         other = other.reshape(other.size, ).astype(np.float32)
         operationType = operationType.encode()
 
-        self._frame.gpuOperation_this( operationType, this_lowerRow, this_upperRow, this_lowerCol, this_upperCol, other, inPlace )
+        self._frame.gpuOperation_thisOther( operationType, this_rowSelection, this_colSelection, other, inPlace )
 
         # so we don't necessarily know who called this, but results should always be the same ...
         if not inPlace:
@@ -211,7 +227,7 @@ class gframe():
             cols = otherShape[1]
 
         otherFlat = other.reshape(other.size, ).astype(np.float32)
-        self._frame.concat(otherFlat, rows, cols, axis)
+        self._frame.concat(otherFlat, rows, cols, axis, columns)
 
 
 
@@ -230,6 +246,9 @@ if __name__ == '__main__':
     myFrame = gframe(values, cols)
 
     other = np.random.rand(size, size)
+
+
+    b = myFrame[:,[0,1,2]]
 
     a = myFrame[['b', 'c']]
     print(a)

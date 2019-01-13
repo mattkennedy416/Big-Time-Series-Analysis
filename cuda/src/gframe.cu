@@ -71,7 +71,8 @@ void gframe::operateOnSection(int minRow, int maxRow, int minCol, int maxCol) {
 }
 
 
-void gframe::gpuOperation_thisOther(char* operationType, int this_lowerRow, int this_upperRow, int this_lowerCol, int this_upperCol, float* other, int otherLength, bool inPlace) {
+//void gframe::gpuOperation_thisOther(char* operationType, int this_lowerRow, int this_upperRow, int this_lowerCol, int this_upperCol, float* other, int otherLength, bool inPlace) {
+void gframe::gpuOperation_thisOther(char* operationType, int* this_rowArray, int this_rowArrayLength, int* this_colArray, int this_colArrayLength, float* other, int otherLength, bool inPlace) {
 
 	printf("Operation Type: %s\n", operationType);
 
@@ -79,12 +80,14 @@ void gframe::gpuOperation_thisOther(char* operationType, int this_lowerRow, int 
 	// assume they're both float32s for now
 
 	// use the lower/upper terminology since the upper values are not actually included (stops at previous index)
-	int section_numRows = (this_upperRow-this_lowerRow);
-	int section_numCols = (this_upperCol-this_lowerCol);
+//	int section_numRows = (this_upperRow-this_lowerRow);
+//	int section_numCols = (this_upperCol-this_lowerCol);
+	int section_numRows = this_rowArrayLength;
+	int section_numCols = this_colArrayLength;
 
 	int this_requestedSize = (section_numRows)*(section_numCols);
 
-	printf("This size: (%i,%i,%i,%i)->(%i,%i)=%i -- other size: %i\n", this_lowerRow, this_upperRow, this_lowerCol,this_upperCol, section_numRows, section_numCols, this_requestedSize, otherLength);
+	//printf("This size: (%i,%i,%i,%i)->(%i,%i)=%i -- other size: %i\n", this_lowerRow, this_upperRow, this_lowerCol,this_upperCol, section_numRows, section_numCols, this_requestedSize, otherLength);
 
 	if (this_requestedSize != otherLength)
 	{
@@ -117,23 +120,46 @@ void gframe::gpuOperation_thisOther(char* operationType, int this_lowerRow, int 
 		// I think the cuda kernel doesn't like being passed null pointers
 		err = cudaMalloc((void **) &results_device, 2*sizeof(float));
 	}
+	
+	
+	int* this_rowArray_device;
+	int* this_colArray_device;
+	cudaMalloc((void **) &this_rowArray_device, this_rowArrayLength*sizeof(int));
+	cudaMalloc((void **) &this_colArray_device, this_colArrayLength*sizeof(int));
+	cudaMemcpy(this_rowArray_device, this_rowArray, this_rowArrayLength*sizeof(int), cudaMemcpyHostToDevice);
+	cudaMemcpy(this_colArray_device, this_colArray, this_colArrayLength*sizeof(int), cudaMemcpyHostToDevice);
+	
+	for (int n=0; n<this_rowArrayLength; n++)
+		printf("CPU: (%i,%i)\n", this_rowArray[n], this_colArray[n]);
+	printf("Total columns: %i\n", this_totalColumns);
+	
 
 
 	dim3 threadsPerBlock(32,32);
 	dim3 numBlocks(section_numRows/threadsPerBlock.x + 1, section_numCols/threadsPerBlock.y + 1);
 	printf("Num Blocks = (%i,%i)\n", numBlocks.x, numBlocks.y);
-
+	
+	
+	int operationID; // so cuda can't parse strings easily, lets convert our string ID to an integer for the kernel
 	if (strcmp(operationType, "add") == 0)
-		kernel_gpuAdd<<<numBlocks, threadsPerBlock>>>(array_device, this_totalColumns, this_totalRows, this_lowerRow, this_lowerCol, other_device, other_totalCols, other_totalRows, inPlace, results_device);
-	else if (strcmp(operationType, "subtract") == 0)
-		kernel_gpuSubtract<<<numBlocks, threadsPerBlock>>>(array_device, this_totalColumns, this_totalRows, this_lowerRow, this_lowerCol, other_device, other_totalCols, other_totalRows, inPlace, results_device);
-	else if (strcmp(operationType, "multiply") == 0)
-		kernel_gpuMultiply<<<numBlocks, threadsPerBlock>>>(array_device, this_totalColumns, this_totalRows, this_lowerRow, this_lowerCol, other_device, other_totalCols, other_totalRows, inPlace, results_device);
-	else if (strcmp(operationType, "divide") == 0)
-		kernel_gpuDivide<<<numBlocks, threadsPerBlock>>>(array_device, this_totalColumns, this_totalRows, this_lowerRow, this_lowerCol, other_device, other_totalCols, other_totalRows, inPlace, results_device);
+		operationID = 0;
+	
+	
 
-	else
-		throw std::invalid_argument("Unknown operation type");
+	
+	kernel_gpuBasicOps<<<numBlocks, threadsPerBlock>>>(operationID, array_device, this_totalColumns, this_totalRows, this_rowArray_device, this_rowArrayLength, this_colArray_device, this_colArrayLength, other_device, other_totalCols, other_totalRows, inPlace, results_device);
+	
+//	if (strcmp(operationType, "add") == 0)
+//		kernel_gpuAdd<<<numBlocks, threadsPerBlock>>>(array_device, this_totalColumns, this_totalRows, this_lowerRow, this_lowerCol, other_device, other_totalCols, other_totalRows, inPlace, results_device);
+//	else if (strcmp(operationType, "subtract") == 0)
+//		kernel_gpuSubtract<<<numBlocks, threadsPerBlock>>>(array_device, this_totalColumns, this_totalRows, this_lowerRow, this_lowerCol, other_device, other_totalCols, other_totalRows, inPlace, results_device);
+//	else if (strcmp(operationType, "multiply") == 0)
+//		kernel_gpuMultiply<<<numBlocks, threadsPerBlock>>>(array_device, this_totalColumns, this_totalRows, this_lowerRow, this_lowerCol, other_device, other_totalCols, other_totalRows, inPlace, results_device);
+//	else if (strcmp(operationType, "divide") == 0)
+//		kernel_gpuDivide<<<numBlocks, threadsPerBlock>>>(array_device, this_totalColumns, this_totalRows, this_lowerRow, this_lowerCol, other_device, other_totalCols, other_totalRows, inPlace, results_device);
+//
+//	else
+//		throw std::invalid_argument("Unknown operation type");
 
 
 	cudaCheckError();

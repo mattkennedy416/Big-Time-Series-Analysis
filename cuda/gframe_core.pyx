@@ -17,7 +17,8 @@ cdef extern from "src/gframe.hh":
     cdef cppclass C_gframe "gframe":
         C_gframe(np.float32_t*, int, int)
         void operateOnSection(int, int, int, int)
-        void gpuOperation_thisOther(char*, int, int, int, int, float*, int, bool)
+        #void gpuOperation_thisOther(char*, int, int, int, int, float*, int, bool)
+        void gpuOperation_thisOther(char*, np.int32_t*, int, np.int32_t*, int, float*, int, bool)
         void retreive_results(np.float32_t*)
         void retreive_results_shape(np.int32_t*)
         void retreive_array(np.float32_t*)
@@ -54,6 +55,7 @@ cdef class gframe:
     cdef int numRows
     cdef int numColumns
     cdef dict _columnKeys
+    cdef str uid
 
     def __cinit__(self, np.ndarray[ndim=1, dtype=np.float32_t] arr, int numRows, int numColumns, columnKeys):
         self.numRows = numRows
@@ -68,7 +70,7 @@ cdef class gframe:
                 self._columnKeys[key] = col
 
         # and lets generate a unique id for this frame instance
-        self.uid = uuid.uuid1()
+        self.uid = str(uuid.uuid1())
 
         self.g = new C_gframe(&arr[0], self.numRows, self.numColumns)
 
@@ -92,11 +94,50 @@ cdef class gframe:
         self.g.operateOnSection(minRow, maxRow, minCol, maxCol)
 
 
-    def gpuOperation_thisOther(self, char* opType, int this_lowerRow, int this_upperRow, int this_lowerCol, int this_upperCol, np.ndarray[ndim=1, dtype=np.float32_t] other, bool inPlace):
-        print('Cython add inPlace=', inPlace)
+    # def gpuOperation_this(self, char* opType, int this_lowerRow, int this_upperRow, int this_lowerCol, int this_upperCol, np.ndarray[ndim=1, dtype=np.float32_t] other, bool inPlace):
+    #     print('shit is broken yo')
+    #
+    #     #self.g.gpuOperation_this('add'.encode(), this_lowerRow, this_upperRow, this_lowerCol, this_upperCol, &other[0], len(other), inPlace)
+    #     #self.g.gpuOperation_thisOther(opType, this_lowerRow, this_upperRow, this_lowerCol, this_upperCol, &other[0], len(other), inPlace)
+
+    def _indexSelectionToArray(self, selection):
+
+        # simplest way to convert slice to array would be np.array(range(selection.stop))[slice]
+        # is there a better way? probably
+
+        if isinstance(selection, slice):
+            if selection.stop is None:
+                stop = self.numRows
+            else:
+                stop = selection.stop
+            selectionArray = np.array( range(stop) )[selection]
+        elif isinstance(selection, int):
+            selectionArray = np.array([selection])
+        elif isinstance(selection, list):
+            selectionArray = np.array(selection)
+        elif isinstance(selection, np.ndarray):
+            selectionArray = selection
+
+        print('Selection:', selection)
+        print('SelectionArray:', selectionArray)
+
+        return selectionArray.astype(np.int32)
+
+
+    def gpuOperation_thisOther(self, char* opType, this_rowSelection, this_colSelection, np.ndarray[ndim=1, dtype=np.float32_t] other, bool inPlace):
+
+        # this_rowArray = self._indexSelectionToArray(this_rowSelection)
+        # this_colArray = self._indexSelectionToArray(this_colSelection)
+
+        cdef np.ndarray[ndim=1, dtype=np.int32_t] this_rowArray = self._indexSelectionToArray(this_rowSelection)
+        cdef np.ndarray[ndim=1, dtype=np.int32_t] this_colArray = self._indexSelectionToArray(this_colSelection)
+
+        print(this_rowArray)
+        print(this_colArray)
+
 
         #self.g.gpuOperation_this('add'.encode(), this_lowerRow, this_upperRow, this_lowerCol, this_upperCol, &other[0], len(other), inPlace)
-        self.g.gpuOperation_thisOther(opType, this_lowerRow, this_upperRow, this_lowerCol, this_upperCol, &other[0], len(other), inPlace)
+        self.g.gpuOperation_thisOther(opType, &this_rowArray[0], len(this_rowArray), &this_colArray[0], len(this_colArray), &other[0], len(other), inPlace)
 
 
     def _generateUniqueHeader(self, keyBase):

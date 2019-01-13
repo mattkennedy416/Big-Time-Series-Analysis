@@ -106,7 +106,7 @@ except AttributeError:
 
 
 ext = Extension('gts',
-                sources=['src/manager.cu', 'src/gframe.cu', 'wrapper.pyx'],
+                sources=['src/manager.cu', 'src/gframe.cu', 'gframe_core.pyx'],
                 library_dirs=[CUDA['lib64']],
                 libraries=['cudart'],
                 language='c++',
