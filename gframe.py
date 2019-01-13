@@ -51,9 +51,30 @@ class gframe_slice():
     def __add__(self, other): # and this is the +
         return self.parent._gpuOperation_thisOther('add', self.rows, self.columns, other, inPlace=False)
 
-
     def __iadd__(self, other): # so this is the +=
         self.parent._gpuOperation_thisOther('add', self.rows, self.columns, other, inPlace=True)
+
+    def __mul__(self, other):  # and this is the *
+        return self.parent._gpuOperation_thisOther('multiply', self.rows, self.columns, other, inPlace=False)
+
+    def __imul__(self, other):  # so this is the *=
+        self.parent._gpuOperation_thisOther('multiply', self.rows, self.columns, other, inPlace=True)
+
+    def __sub__(self, other): # and this is the -
+        return self.parent._gpuOperation_thisOther('subtract', self.rows, self.columns, other, inPlace=False)
+
+    def __isub__(self, other): # so this is the -=
+        self.parent._gpuOperation_thisOther('subtract', self.rows, self.columns, other, inPlace=True)
+
+    def __truediv__(self, other): # and this is the /
+        return self.parent._gpuOperation_thisOther('divide', self.rows, self.columns, other, inPlace=False)
+
+    def __itruediv__(self, other): # so this is the /=
+        self.parent._gpuOperation_thisOther('divide', self.rows, self.columns, other, inPlace=True)
+
+
+    def __gt__(self, other):
+        return self.parent._gpuOperation_thisOther('greaterThan', self.rows, self.columns, other, inPlace=False).astype(bool)
 
 
 
@@ -254,7 +275,7 @@ if __name__ == '__main__':
     #myFrame['a'] += 5
     # myFrame['b'] += 50*other[:,0]
     #
-    test = myFrame['a'] + 10
+    test = myFrame['a'] > 0.5
 
     #b = myFrame[:,[0,1,2]]
 

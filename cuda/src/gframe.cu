@@ -190,6 +190,15 @@ void gframe::gpuOperation_thisOther(char* operationType, int* this_rowArray, int
 	int operationID; // so cuda can't parse strings easily, lets convert our string ID to an integer for the kernel
 	if (strcmp(operationType, "add") == 0)
 		operationID = 0;
+	else if (strcmp(operationType, "subtract") == 0)
+		operationID = 1;
+	else if (strcmp(operationType, "multiply") == 0)
+		operationID = 2;
+	else if (strcmp(operationType, "divide") == 0)
+		operationID = 3;
+	else if (strcmp(operationType, "greaterThan") == 0)
+		operationID = 4;
+	
 	
 	
 

@@ -129,7 +129,14 @@ void __global__ kernel_gpuBasicOps(int operationID, float* array_device, int thi
 			if (inPlace)
 				printf("GREATER THAN operation is only valid for not-in-place");
 			else
-				results_device[results_flattenedInd] = array_device[this_flattenedInd] > other_device[other_flattenedInd];
+			{
+				bool val = array_device[this_flattenedInd] > other_device[other_flattenedInd];
+				if (val)
+					results_device[results_flattenedInd] = 1;
+				else
+					results_device[results_flattenedInd] = 0;
+			}
+				
 		}
 
 	}
