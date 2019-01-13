@@ -177,6 +177,9 @@ class gframe():
     def _gpuOperation_thisOther(self, operationType, this_rowSelection, this_colSelection, other, inPlace):
         # "other" is an arbitrary vector which needs to be copied up to the gpu
 
+        if not isinstance(other, np.ndarray):
+            other = np.array([other])
+
         other = other.reshape(other.size, ).astype(np.float32)
         operationType = operationType.encode()
 
@@ -248,24 +251,28 @@ if __name__ == '__main__':
 
     other = np.random.rand(size, size)
 
+    #myFrame['a'] += 5
+    # myFrame['b'] += 50*other[:,0]
+    #
+    test = myFrame['a'] + 10
 
     #b = myFrame[:,[0,1,2]]
 
     #a = myFrame[['b', 'c']]
     #print(a)
-
+    #
     frameValues1 = myFrame._frame.retreive_array()
+    print(frameValues1)
 
-    myFrame['g'] = np.random.rand(size)
-
-    frameValues2 = myFrame._frame.retreive_array()
-
-
-
-    c = myFrame.sort('a')
-    print(c)
-
-    # next step is going to be getting the column keys up and running
+    #
+    # myFrame['g'] = np.random.rand(size)
+    #
+    # frameValues2 = myFrame._frame.retreive_array()
+    #
+    #
+    #
+    # c = myFrame.sort('a')
+    # print(c)
 
 
 

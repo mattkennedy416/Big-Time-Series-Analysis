@@ -123,30 +123,44 @@ void gframe::gpuOperation_thisOther(char* operationType, int* this_rowArray, int
 
 	//printf("This size: (%i,%i,%i,%i)->(%i,%i)=%i -- other size: %i\n", this_lowerRow, this_upperRow, this_lowerCol,this_upperCol, section_numRows, section_numCols, this_requestedSize, otherLength);
 
-	if (this_requestedSize != otherLength)
+	if (this_requestedSize != otherLength && otherLength != 1)
 	{
+		// though we do need to account for single value operations
 		printf("Different sized arrays trying to be added together! %i vs %i\n", this_requestedSize, otherLength);
 		return; // need to come up with a better way to handle invalid indexing, maybe this should actually be done on the python side
 	}
 
-
+	
+	cudaError_t err;
 
 	// I guess assume they've been flattened in the same way?
 	// so lets first copy the new data up to the GPU, then add it
 
-	int other_totalCols = section_numCols; // assume they're the same shape
-	int other_totalRows = section_numRows;
-
+//	int other_totalCols = section_numCols; // assume they're the same shape
+//	int other_totalRows = section_numRows;
+	
+	
+	
 	float* other_device;
-	cudaError_t err = cudaMalloc((void **) &other_device, otherLength*sizeof(float));
-	err = cudaMemcpy(other_device, other, otherLength*sizeof(float), cudaMemcpyHostToDevice);
+//	if (otherLength == 1)
+//	{
+//		printf("Single value other operation\n");
+//		other_device = other;
+//	}
+//	else
+//	{
+		err = cudaMalloc((void **) &other_device, otherLength*sizeof(float));
+		err = cudaMemcpy(other_device, other, otherLength*sizeof(float), cudaMemcpyHostToDevice);
+	//}
+	
+
 
 
 	if (inPlace == false)
 	{
-		err = cudaMalloc((void **) &results_device, otherLength*sizeof(float));
-		results_totalRows = other_totalRows;
-		results_totalColumns = other_totalCols;
+		err = cudaMalloc((void **) &results_device, section_numRows*section_numCols*sizeof(float));
+		results_totalRows = section_numRows;
+		results_totalColumns = section_numCols;
 		// we don't need to copy anything up right?
 	}
 	else
@@ -163,11 +177,10 @@ void gframe::gpuOperation_thisOther(char* operationType, int* this_rowArray, int
 	cudaMemcpy(this_rowArray_device, this_rowArray, this_rowArrayLength*sizeof(int), cudaMemcpyHostToDevice);
 	cudaMemcpy(this_colArray_device, this_colArray, this_colArrayLength*sizeof(int), cudaMemcpyHostToDevice);
 	
-	for (int n=0; n<this_rowArrayLength; n++)
-		printf("CPU: (%i,%i)\n", this_rowArray[n], this_colArray[n]);
-	printf("Total columns: %i\n", this_totalColumns);
+//	for (int n=0; n<this_rowArrayLength; n++)
+//		printf("CPU: (%i,%i)\n", this_rowArray[n], this_colArray[n]);
+//	printf("Total columns: %i\n", this_totalColumns);
 	
-
 
 	dim3 threadsPerBlock(32,32);
 	dim3 numBlocks(section_numRows/threadsPerBlock.x + 1, section_numCols/threadsPerBlock.y + 1);
@@ -181,21 +194,8 @@ void gframe::gpuOperation_thisOther(char* operationType, int* this_rowArray, int
 	
 
 	
-	kernel_gpuBasicOps<<<numBlocks, threadsPerBlock>>>(operationID, array_device, this_totalColumns, this_totalRows, this_rowArray_device, this_rowArrayLength, this_colArray_device, this_colArrayLength, other_device, other_totalCols, other_totalRows, inPlace, results_device);
+	kernel_gpuBasicOps<<<numBlocks, threadsPerBlock>>>(operationID, array_device, this_totalColumns, this_totalRows, this_rowArray_device, this_rowArrayLength, this_colArray_device, this_colArrayLength, other_device, section_numCols, section_numRows, otherLength, inPlace, results_device);
 	
-//	if (strcmp(operationType, "add") == 0)
-//		kernel_gpuAdd<<<numBlocks, threadsPerBlock>>>(array_device, this_totalColumns, this_totalRows, this_lowerRow, this_lowerCol, other_device, other_totalCols, other_totalRows, inPlace, results_device);
-//	else if (strcmp(operationType, "subtract") == 0)
-//		kernel_gpuSubtract<<<numBlocks, threadsPerBlock>>>(array_device, this_totalColumns, this_totalRows, this_lowerRow, this_lowerCol, other_device, other_totalCols, other_totalRows, inPlace, results_device);
-//	else if (strcmp(operationType, "multiply") == 0)
-//		kernel_gpuMultiply<<<numBlocks, threadsPerBlock>>>(array_device, this_totalColumns, this_totalRows, this_lowerRow, this_lowerCol, other_device, other_totalCols, other_totalRows, inPlace, results_device);
-//	else if (strcmp(operationType, "divide") == 0)
-//		kernel_gpuDivide<<<numBlocks, threadsPerBlock>>>(array_device, this_totalColumns, this_totalRows, this_lowerRow, this_lowerCol, other_device, other_totalCols, other_totalRows, inPlace, results_device);
-//
-//	else
-//		throw std::invalid_argument("Unknown operation type");
-
-
 	cudaCheckError();
 
 	cudaDeviceSynchronize();
@@ -204,8 +204,8 @@ void gframe::gpuOperation_thisOther(char* operationType, int* this_rowArray, int
 	if (inPlace == false)
 	{
 		printf("Not in place -- copying results_device back to results_host ...\n");
-		results_host = (float* )malloc(otherLength*sizeof(float)); // need to malloc this before copying back
-		cudaMemcpy(results_host, results_device, otherLength*sizeof(float), cudaMemcpyDeviceToHost);
+		results_host = (float* )malloc(section_numRows*section_numCols*sizeof(float)); // need to malloc this before copying back
+		cudaMemcpy(results_host, results_device, section_numRows*section_numCols*sizeof(float), cudaMemcpyDeviceToHost);
 		cudaCheckError();
 		// this should affect the array_device_modifiedSinceLastHostCopy (leave at current value either way)
 		printf("Done copying!\n");

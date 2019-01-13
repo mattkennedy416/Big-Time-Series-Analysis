@@ -50,124 +50,110 @@ void __global__ kernal_printSubsection(float* array_device, int minRow, int maxR
 }
 
 
-void __global__ kernel_gpuBasicOps(int operationID, float* array_device, int this_totalColumns, int this_totalRows, int* this_rowArray, int this_rowArrayLength, int* this_colArray, int this_colArrayLength, float* other_device, int other_totalCols, int other_totalRows, bool inPlace, float* results_device) {
+void __global__ kernel_gpuBasicOps(int operationID, float* array_device, int this_totalColumns, int this_totalRows, int* this_rowArray, int this_rowArrayLength, int* this_colArray, int this_colArrayLength, float* other_device, int section_numCols, int section_numRows, int otherLength, bool inPlace, float* results_device) {
 	//	// we're assuming that the other_totalCols and other_totalRows is the entire matrix
 	//	// while "this" that's already in the gpu is a relative index
 	
+	// so I think we'll have two different modes of operation here
+	// 1st mode:
+	//		other_device has same number of elements as whatever we're comparing it to in array_device
+	// 2nd mode:
+	// 		other_device has a single element, in which case we should compare all values in array_device to that single value (ie array_device[:,0] + 5)
+	
 	int n = blockIdx.x * blockDim.x + threadIdx.x;
 	int m = blockIdx.y * blockDim.y + threadIdx.y;
 	
-	if (n < other_totalRows && m < other_totalCols)
+	if (n < this_rowArrayLength && m < this_colArrayLength)
 	{
-		int this_flattenedInd = this_rowArray[n]*this_totalColumns + this_colArray[m];
-		int other_flattenedInd = n*other_totalCols + m;
+		printf("Kernel Operation on (%i,%i) -- otherLength=%i\n", n,m, otherLength);
 		
-		printf("accessing (%i,%i)<->(%i,%i)\n", this_rowArray[n], this_colArray[m], n, m);
+		int this_flattenedInd;
+		int other_flattenedInd;
+		int results_flattenedInd;
 		
-		if (operationID == 0) // addition
+		
+		if (otherLength == 1)
 		{
+			this_flattenedInd = this_rowArray[n]*this_totalColumns + this_colArray[m];
+			other_flattenedInd = 0;
+			results_flattenedInd = n*section_numCols + m;
+		}
+		else
+		{
+			this_flattenedInd = this_rowArray[n]*this_totalColumns + this_colArray[m];
+			other_flattenedInd = n*section_numCols + m;
+			results_flattenedInd = n*section_numCols + m;
+		}
+		
+		
+
+		
+		//printf("accessing (%i,%i)<->(%i,%i)\n", this_rowArray[n], this_colArray[m], n, m);
+		
+		// while I don't really like this solution, it does keep us from having to create separate kernels for every single operation
+		if (operationID == 0) // **ADDITION**
+		{
+			printf("Adding %f to %f at location %i\n", other_device[other_flattenedInd], array_device[this_flattenedInd], this_flattenedInd);
 			if (inPlace)
 				array_device[this_flattenedInd] = array_device[this_flattenedInd] + other_device[other_flattenedInd];
 			else
-				results_device[other_flattenedInd] = array_device[this_flattenedInd] + other_device[other_flattenedInd];
+				results_device[results_flattenedInd] = array_device[this_flattenedInd] + other_device[other_flattenedInd];
 		}
-	}
-	
-	
-}
-
-//void __global__ kernel_gpuAdd(float* array_device, int this_totalCols, int this_totalRows, int this_lowerRow, int this_lowerCol, float* other, int other_totalCols, int other_totalRows, bool inPlace, float* results_device) {
-//	
-//	// we're assuming that the other_totalCols and other_totalRows is the entire matrix
-//	// while "this" that's already in the gpu is a relative index
-//	
-//	int n = blockIdx.x * blockDim.x + threadIdx.x;
-//	int m = blockIdx.y * blockDim.y + threadIdx.y;
-//	
-//	if (n < other_totalRows && m < other_totalCols)
-//	{
-//		int this_flattenedInd = (n + this_lowerRow)*this_totalCols + (m + this_lowerCol);
-//		int other_flattenedInd = n*other_totalCols + m;
-//		
-//		if (inPlace)
-//			array_device[this_flattenedInd] = array_device[this_flattenedInd] + other[other_flattenedInd];
-//		else
-//			results_device[other_flattenedInd] = array_device[this_flattenedInd] + other[other_flattenedInd];
-//		
-//	}
-//	
-//}
-
-
-
-
-void __global__ kernel_gpuSubtract(float* array_device, int this_totalCols, int this_totalRows, int this_lowerRow, int this_lowerCol, float* other, int other_totalCols, int other_totalRows, bool inPlace, float* results_device) {
-	
-	// we're assuming that the other_totalCols and other_totalRows is the entire matrix
-	// while "this" that's already in the gpu is a relative index
-	
-	int n = blockIdx.x * blockDim.x + threadIdx.x;
-	int m = blockIdx.y * blockDim.y + threadIdx.y;
-	
-	if (n < other_totalRows && m < other_totalCols)
-	{
-		int this_flattenedInd = (n + this_lowerRow)*this_totalCols + (m + this_lowerCol);
-		int other_flattenedInd = n*other_totalCols + m;
 		
-		if (inPlace)
-			array_device[this_flattenedInd] = array_device[this_flattenedInd] - other[other_flattenedInd];
-		else
-			results_device[other_flattenedInd] = array_device[this_flattenedInd] - other[other_flattenedInd];
+		else if (operationID == 1) // **SUBTRACTION**
+		{
+			if (inPlace)
+				array_device[this_flattenedInd] = array_device[this_flattenedInd] - other_device[other_flattenedInd];
+			else
+				results_device[results_flattenedInd] = array_device[this_flattenedInd] - other_device[other_flattenedInd];
+		}
 		
+		else if (operationID == 2) // **DIVISION**
+		{
+			if (inPlace)
+				array_device[this_flattenedInd] = array_device[this_flattenedInd] / other_device[other_flattenedInd];
+			else
+				results_device[results_flattenedInd] = array_device[this_flattenedInd] / other_device[other_flattenedInd];
+		}
+		
+		else if (operationID == 3) // **MULTIPLICATION**
+		{
+			if (inPlace)
+				array_device[this_flattenedInd] = array_device[this_flattenedInd] * other_device[other_flattenedInd];
+			else
+				results_device[results_flattenedInd] = array_device[this_flattenedInd] * other_device[other_flattenedInd];
+		}
+		
+		else if (operationID == 4) // GREATER THAN
+		{
+			if (inPlace)
+				printf("GREATER THAN operation is only valid for not-in-place");
+			else
+				results_device[results_flattenedInd] = array_device[this_flattenedInd] > other_device[other_flattenedInd];
+		}
+
 	}
-	
 }
 
 
-void __global__ kernel_gpuMultiply(float* array_device, int this_totalCols, int this_totalRows, int this_lowerRow, int this_lowerCol, float* other, int other_totalCols, int other_totalRows, bool inPlace, float* results_device) {
-	
-	// we're assuming that the other_totalCols and other_totalRows is the entire matrix
-	// while "this" that's already in the gpu is a relative index
-	
-	int n = blockIdx.x * blockDim.x + threadIdx.x;
-	int m = blockIdx.y * blockDim.y + threadIdx.y;
-	
-	if (n < other_totalRows && m < other_totalCols)
-	{
-		int this_flattenedInd = (n + this_lowerRow)*this_totalCols + (m + this_lowerCol);
-		int other_flattenedInd = n*other_totalCols + m;
-		
-		if (inPlace)
-			array_device[this_flattenedInd] = array_device[this_flattenedInd] * other[other_flattenedInd];
-		else
-			results_device[other_flattenedInd] = array_device[this_flattenedInd] * other[other_flattenedInd];
-		
-	}
-	
-}
 
 
-void __global__ kernel_gpuDivide(float* array_device, int this_totalCols, int this_totalRows, int this_lowerRow, int this_lowerCol, float* other, int other_totalCols, int other_totalRows, bool inPlace, float* results_device) {
-	
-	// we're assuming that the other_totalCols and other_totalRows is the entire matrix
-	// while "this" that's already in the gpu is a relative index
-	
-	int n = blockIdx.x * blockDim.x + threadIdx.x;
-	int m = blockIdx.y * blockDim.y + threadIdx.y;
-	
-	if (n < other_totalRows && m < other_totalCols)
-	{
-		int this_flattenedInd = (n + this_lowerRow)*this_totalCols + (m + this_lowerCol);
-		int other_flattenedInd = n*other_totalCols + m;
-		
-		if (inPlace)
-			array_device[this_flattenedInd] = array_device[this_flattenedInd] / other[other_flattenedInd];
-		else
-			results_device[other_flattenedInd] = array_device[this_flattenedInd] / other[other_flattenedInd];
-		
-	}
-	
-}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
