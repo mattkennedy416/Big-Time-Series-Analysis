@@ -75,6 +75,8 @@ void gframe::cpuSort(int colInd, int* index ) {
 	// index should be input as original index (ie not dummy values!)
 	// will be reordered as needed
 	
+	printf("starting cpu sort\n");
+	
 	updateHostFromGPU();
 	
 	int i, j;
@@ -82,8 +84,13 @@ void gframe::cpuSort(int colInd, int* index ) {
 	{
 		for (j=0; j<this_totalRows-1; j++)
 		{
-			float val1 = j*this_totalColumns + colInd;
-			float val2 = (j+1)*this_totalColumns + colInd;
+			int ind1 = index[j]*this_totalColumns + colInd;
+			int ind2 = (index[j+1])*this_totalColumns + colInd;
+			
+			float val1 = array_host[ind1];
+			float val2 = array_host[ind2];
+			
+			//printf("(i,j)=(%i,%i) -> index=(%i,%i) -> values=(%f,%f)\n", i,j, index[j], index[j+1], val1, val2);
 			
 			if (val1 > val2)
 			{
@@ -373,7 +380,7 @@ void gframe::concat(float* newArray, int newNumRows, int newNumCols, int axis) {
 			else if (axis==1)
 				absInd = n*new_totalColumns + (m+this_totalColumns); // row will still be the same, just need to offset the column
 
-			printf("copying from relative %i to (%i,%i)=%i of %i\n", relativeInd, n, m, absInd, newSize/sizeof(float));
+			//printf("copying from relative %i to (%i,%i)=%i of %i\n", relativeInd, n, m, absInd, newSize/sizeof(float));
 			array_host[absInd] = newArray[relativeInd];
 		}
 	}

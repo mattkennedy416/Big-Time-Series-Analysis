@@ -230,7 +230,8 @@ class gframe():
         self._frame.concat(otherFlat, rows, cols, axis, columns)
 
 
-
+    def sort(self, columnKey):
+        return self._frame.sort(columnKey)
 
 
 
@@ -255,12 +256,12 @@ if __name__ == '__main__':
 
     myFrame['g'] = np.random.rand(size)
 
-    #frameValues = myFrame._frame.retreive_array()
+    frameValues = myFrame._frame.retreive_array()
 
 
 
-    #print(myFrame.sort('g'))
-
+    c = myFrame.sort('g')
+    print(c)
 
     # next step is going to be getting the column keys up and running
 

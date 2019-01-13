@@ -153,16 +153,19 @@ cdef class gframe:
         return key
 
 
-    def sort(self, column):
-        cdef np.ndarray[ndim=1, dtype=np.int32_t] index = np.array(range(self.numRows))
-        colInd = self.getColumn(column)
+    def sort(self, columnKey, ascending=True):
+        cdef np.ndarray[ndim=1, dtype=np.int32_t] index = np.array(range(self.numRows)).astype(np.int32)
+        colInd = self.getColumn(columnKey)
 
         self.g.cpuSort(colInd, &index[0])
 
-
         values = self.retreive_array()
 
-        return values[index,:]
+        if ascending:
+            return values[index,:]
+        else:
+            return values[index[::-1],:]
+
 
 
     def concat(self, np.ndarray[ndim=1, dtype=np.float32_t] newArray, int newNumRows, int newNumCols, int axis, columnKeys):
