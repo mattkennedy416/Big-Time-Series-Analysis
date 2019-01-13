@@ -16,13 +16,14 @@ cdef extern from "src/manager.hh":
 cdef extern from "src/gframe.hh":
     cdef cppclass C_gframe "gframe":
         C_gframe(np.float32_t*, int, int)
-        void operateOnSection(int, int, int, int)
+        #void operateOnSection(int, int, int, int)
         #void gpuOperation_thisOther(char*, int, int, int, int, float*, int, bool)
         void gpuOperation_thisOther(char*, np.int32_t*, int, np.int32_t*, int, float*, int, bool)
         void retreive_results(np.float32_t*)
         void retreive_results_shape(np.int32_t*)
         void retreive_array(np.float32_t*)
         void concat(np.float32_t*, int, int, int)
+        void cpuSort(int, np.int32_t*)
         # void increment()
         # void retreive()
         # void retreive_to(np.int32_t*, int)
@@ -90,8 +91,8 @@ cdef class gframe:
         return self.uid
 
 
-    def operateOnSection(self, int minRow, int maxRow, int minCol, int maxCol):
-        self.g.operateOnSection(minRow, maxRow, minCol, maxCol)
+    # def operateOnSection(self, int minRow, int maxRow, int minCol, int maxCol):
+    #     self.g.operateOnSection(minRow, maxRow, minCol, maxCol)
 
 
     # def gpuOperation_this(self, char* opType, int this_lowerRow, int this_upperRow, int this_lowerCol, int this_upperCol, np.ndarray[ndim=1, dtype=np.float32_t] other, bool inPlace):
@@ -152,9 +153,29 @@ cdef class gframe:
         return key
 
 
+    def sort(self, column):
+        cdef np.ndarray[ndim=1, dtype=np.int32_t] index = np.array(range(self.numRows))
+        colInd = self.getColumn(column)
+
+        self.g.cpuSort(colInd, &index[0])
+
+
+        values = self.retreive_array()
+
+        return values[index,:]
+
 
     def concat(self, np.ndarray[ndim=1, dtype=np.float32_t] newArray, int newNumRows, int newNumCols, int axis, columnKeys):
         # concatenate newArray to existing array in memory
+
+        if axis == 0: # number of columns must be the same?
+            if newNumCols != self.numColumns:
+                raise ValueError('Cannot concatenate new values of shape('+str(newNumRows)+','+str(newNumCols)+') to gframe of shape('+str(self.numRows)+','+str(self.numColumns)+')')
+        elif axis == 1: # number of rows must be the same
+            if newNumRows != self.numRows:
+                raise ValueError('Cannot concatenate new values of shape('+str(newNumRows)+','+str(newNumCols)+') to gframe of shape('+str(self.numRows)+','+str(self.numColumns)+')')
+
+
         self.g.concat(&newArray[0], newNumRows, newNumCols, axis)
         if axis == 0:
             self.numRows += newNumRows

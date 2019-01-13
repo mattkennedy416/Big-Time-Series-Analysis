@@ -240,7 +240,7 @@ if __name__ == '__main__':
 
     import numpy as np
 
-    size = 2500
+    size = 250
     cols = ['a','b','c','d','e']
     values = np.random.rand(size, len(cols))
     myFrame = gframe(values, cols)
@@ -248,16 +248,18 @@ if __name__ == '__main__':
     other = np.random.rand(size, size)
 
 
-    b = myFrame[:,[0,1,2]]
+    #b = myFrame[:,[0,1,2]]
 
-    a = myFrame[['b', 'c']]
-    print(a)
+    #a = myFrame[['b', 'c']]
+    #print(a)
 
-    myFrame['g'] = np.random.rand(2500)
+    myFrame['g'] = np.random.rand(size)
 
-    frameValues = myFrame._frame.retreive_array()
+    #frameValues = myFrame._frame.retreive_array()
 
-    print('')
+
+
+    #print(myFrame.sort('g'))
 
 
     # next step is going to be getting the column keys up and running

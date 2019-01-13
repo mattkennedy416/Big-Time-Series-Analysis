@@ -59,15 +59,42 @@ gframe::gframe (float* array_, int numRows_, int numColumns_) {
 }
 
 
-void gframe::operateOnSection(int minRow, int maxRow, int minCol, int maxCol) {
+//void gframe::operateOnSection(int minRow, int maxRow, int minCol, int maxCol) {
+//
+//	printf("Operating on subsection ...\n");
+//	kernal_printSubsection<<<1,1>>>(array_device, minRow, maxRow, minCol, maxCol, this_totalRows, this_totalColumns);
+//	//testKernel<<<10,32>>>();
+//	cudaCheckError();
+//	cudaDeviceSynchronize();
+//	printf("and we aren't crashing...\n");
+//
+//}
 
-	printf("Operating on subsection ...\n");
-	kernal_printSubsection<<<1,1>>>(array_device, minRow, maxRow, minCol, maxCol, this_totalRows, this_totalColumns);
-	//testKernel<<<10,32>>>();
-	cudaCheckError();
-	cudaDeviceSynchronize();
-	printf("and we aren't crashing...\n");
 
+void gframe::cpuSort(int colInd, int* index ) {
+	// index should be input as original index (ie not dummy values!)
+	// will be reordered as needed
+	
+	updateHostFromGPU();
+	
+	int i, j;
+	for (i=0; i<this_totalRows-1; i++)
+	{
+		for (j=0; j<this_totalRows-1; j++)
+		{
+			float val1 = j*this_totalColumns + colInd;
+			float val2 = (j+1)*this_totalColumns + colInd;
+			
+			if (val1 > val2)
+			{
+				int temp = index[j];
+				index[j] = index[j+1];
+				index[j+1] = temp;
+			}
+			
+		}
+	}
+		
 }
 
 
@@ -310,6 +337,7 @@ void gframe::concat(float* newArray, int newNumRows, int newNumCols, int axis) {
 
 
 	// our new size is going to be the current size plus new size
+	printf("Original Length: %i -- adding (%i,%i)=%i\n", arraySize/sizeof(float), newNumRows, newNumCols, newNumRows*newNumCols);
 	size_t newSize = arraySize + newNumRows*newNumCols*sizeof(float);
 
 	// next lets try to realloc the host copy
@@ -345,6 +373,7 @@ void gframe::concat(float* newArray, int newNumRows, int newNumCols, int axis) {
 			else if (axis==1)
 				absInd = n*new_totalColumns + (m+this_totalColumns); // row will still be the same, just need to offset the column
 
+			printf("copying from relative %i to (%i,%i)=%i of %i\n", relativeInd, n, m, absInd, newSize/sizeof(float));
 			array_host[absInd] = newArray[relativeInd];
 		}
 	}
