@@ -8,6 +8,7 @@ This class will get translated into python via swig
 */
 
 #include <gframe_kernel.cu>
+#include <rolling_kernel.cu>
 #include <gframe.hh>
 #include <assert.h>
 #include <iostream>
@@ -59,6 +60,9 @@ gframe::gframe (float* array_, int numRows_, int numColumns_) {
 }
 
 
+
+
+
 //void gframe::operateOnSection(int minRow, int maxRow, int minCol, int maxCol) {
 //
 //	printf("Operating on subsection ...\n");
@@ -102,6 +106,76 @@ void gframe::cpuSort(int colInd, int* index ) {
 		}
 	}
 		
+}
+
+
+
+void gframe::gpuOperation_rolling(char* operationType, int width, char* method, int* rowArray, int rowArrayLength, int* colArray, int colArrayLength) {
+	
+	
+	printf("and we're rolling! abcd\n");
+	
+	int methodID;
+	if (strcmp(method, "backward") == 0)
+		methodID = 0;
+	else if (strcmp(method, "center") == 0)
+		methodID = 1;
+	else
+	{
+		printf("Unknown rolling method");
+		return;
+	}
+		
+	
+	
+	// so I think we always want this operation to be not-in-place
+	// need to cudaMalloc an array for results storing
+	
+	int numElements = rowArrayLength*colArrayLength;
+	size_t sizeResults = numElements*sizeof(float);
+	
+	//float* results_device;
+	printf("Allocating results_deivce to size %i\n", sizeResults);
+	cudaMalloc((void **) &results_device, sizeResults);
+	// data should already be copied up there though
+	
+	// so do we just now need to do our strcmps and everything else is handled in-kernel?
+	// well we do first need to figure out how many blocks and threads based on the size of the data
+	
+	// and I think we need to cudaMalloc and copy up all arrays ...
+	int* rowArray_device;
+	int* colArray_device;
+	cudaMalloc((void **) &rowArray_device, rowArrayLength*sizeof(int));
+	cudaMalloc((void **) &colArray_device, colArrayLength*sizeof(int));
+	cudaMemcpy(rowArray_device, rowArray, rowArrayLength*sizeof(int), cudaMemcpyHostToDevice);
+	cudaMemcpy(colArray_device, colArray, colArrayLength*sizeof(int), cudaMemcpyHostToDevice);
+	
+	
+	dim3 threadsPerBlock(32,32);
+	dim3 numBlocks(rowArrayLength/threadsPerBlock.x + 1, colArrayLength/threadsPerBlock.y + 1);
+	
+	printf("Lauching rolling kernel\n");
+	if (strcmp(operationType, "mean_SMA") == 0)
+	{
+		kernel_meanSMA<<<numBlocks, threadsPerBlock>>>(array_device, methodID, width, rowArray_device, rowArrayLength, colArray_device, colArrayLength, this_totalColumns, this_totalRows, results_device);
+		//(float* array_device, int window, int* rowArray, int rowArrayLength, int* colArray, int colArrayLength, float* results) 
+	}
+	
+	cudaDeviceSynchronize();
+	
+	
+	// lets actually just use the standard last-result retrieval
+	// free(results_host);
+	results_host = (float* )malloc(sizeResults);
+	cudaMemcpy(results_host, results_device, sizeResults, cudaMemcpyDeviceToHost);
+	cudaFree(results_device);
+	
+	printf("Setting results size information to: (%i,%i)\n", rowArrayLength, colArrayLength);
+	results_totalRows = rowArrayLength;
+	results_totalColumns = colArrayLength;
+	
+	
+	
 }
 
 

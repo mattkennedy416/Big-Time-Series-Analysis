@@ -16,17 +16,14 @@ cdef extern from "src/manager.hh":
 cdef extern from "src/gframe.hh":
     cdef cppclass C_gframe "gframe":
         C_gframe(np.float32_t*, int, int)
-        #void operateOnSection(int, int, int, int)
-        #void gpuOperation_thisOther(char*, int, int, int, int, float*, int, bool)
         void gpuOperation_thisOther(char*, np.int32_t*, int, np.int32_t*, int, float*, int, bool)
         void retreive_results(np.float32_t*)
         void retreive_results_shape(np.int32_t*)
         void retreive_array(np.float32_t*)
         void concat(np.float32_t*, int, int, int)
         void cpuSort(int, np.int32_t*)
-        # void increment()
-        # void retreive()
-        # void retreive_to(np.int32_t*, int)
+        void gpuOperation_rolling(char*, int, char*, np.int32_t*, int, np.int32_t*, int)
+
 
 
 cdef class GPUUtil:
@@ -127,9 +124,6 @@ cdef class gframe:
 
     def gpuOperation_thisOther(self, char* opType, this_rowSelection, this_colSelection, np.ndarray[ndim=1, dtype=np.float32_t] other, bool inPlace):
 
-        # this_rowArray = self._indexSelectionToArray(this_rowSelection)
-        # this_colArray = self._indexSelectionToArray(this_colSelection)
-
         cdef np.ndarray[ndim=1, dtype=np.int32_t] this_rowArray = self._indexSelectionToArray(this_rowSelection)
         cdef np.ndarray[ndim=1, dtype=np.int32_t] this_colArray = self._indexSelectionToArray(this_colSelection)
 
@@ -139,6 +133,17 @@ cdef class gframe:
 
         #self.g.gpuOperation_this('add'.encode(), this_lowerRow, this_upperRow, this_lowerCol, this_upperCol, &other[0], len(other), inPlace)
         self.g.gpuOperation_thisOther(opType, &this_rowArray[0], len(this_rowArray), &this_colArray[0], len(this_colArray), &other[0], len(other), inPlace)
+
+
+    def rolling(self, char* opType, int width, char* method, rowSelection, colSelection):
+        cdef np.ndarray[ndim=1, dtype=np.int32_t] rowArray = self._indexSelectionToArray(rowSelection)
+        cdef np.ndarray[ndim=1, dtype=np.int32_t] colArray = self._indexSelectionToArray(colSelection)
+
+        self.g.gpuOperation_rolling(opType, width, method, &rowArray[0], len(rowArray), &colArray[0], len(colArray))
+
+        return self.retreive_results()
+
+
 
 
     def _generateUniqueHeader(self, keyBase):

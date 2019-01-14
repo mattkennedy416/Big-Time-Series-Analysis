@@ -4,8 +4,9 @@ class gframe {
   // pointer to the CPU memory where the array is stored
   float* array_host;
 
+  
   float* results_device; // lets see if we can easily do a not-in-place operation where array is left untouched and results is written to
-  float* results_host;
+  float* results_host; // basically just stores the last calculated result for python/cython to grab
   int results_totalRows;
   int results_totalColumns;
 
@@ -37,7 +38,7 @@ public:
   void gpuOperation_thisOther(char* operationType, int* this_rowArray, int this_rowArrayLength, int* this_colArray, int this_colArrayLength, float* other, int otherLength, bool inPlace);
   //void gpuOperation_thisOther(char* operationType, int this_lowerRow, int this_upperRow, int this_lowerCol, int this_upperCol, float* other, int otherLength, bool inPlace);
   //void gpuOperation_thisThis(char* operationType, int this1_lowerRow, int this1_upperRow, int this1_lowerCol, int this1_upperCol, int this2_lowerRow, int this2_upperRow, int this2_lowerCol, int this2_upperCol, bool inPlace);
-
+  void gpuOperation_rolling(char* operationType, int width, char* method, int* rowArray, int rowArrayLength, int* colArray, int colArrayLength);
   //void operateOnSection(int minRow, int maxRow, int minCol, int maxCol);
   void cpuSort(int colInd, int* index );
   void updateHostFromGPU();

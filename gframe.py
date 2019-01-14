@@ -83,27 +83,37 @@ class gframe_slice():
         if value is None:
             return None
 
+    def rolling(self, width, method='backward'):
+        # lets have backward be the default since center will give you future information, which depending on the application can be very bad
+        return gframe_rolling(parent=self, width=width, rows=self.rows, columns=self.columns, method=method)
 
 
-class grframe_rolling():
+class gframe_rolling():
     # similar to gframe_slice above this is going to be a pseudo-wrapper which basically just contains instructions for the gpu to process on demand?
 
     def __init__(self, parent, width, rows=None, columns=None, method='center'):
         # if a gframe_slice is input as the parent, then we already have the rows and columns
         # otherwise if a gframe is given as the parent, then rows and columns need to be explicitly defined
 
-        methodTypes = ('backward','center','forward')
+        methodTypes = ('backward', 'center')
+        # backward windowing looks at window width behind the current point
+        # center windowing looks at a half window width at either side of current point
         if method not in methodTypes:
             raise ValueError('Method must be in: '+str(methodTypes))
-
-        self.parent = parent
-        self.window = width
+        self.method = method
 
         if isinstance(parent, gframe_slice):
-            # self.lowerRow = parent.this_lowerRow
-            # self.upperRow = parent.this_upperRow
-            # self.lowerCol = parent.this_lowerCol
-            # self.upperCol = parent.this_upperCol
+            self.parent_slice = parent
+            self.parent_gframe = parent.parent
+        elif isinstance(parent, gframe):
+            self.parent_slice = None
+            self.parent_gframe = parent
+        else:
+            raise TypeError('gframe_rolling() initiating parent is of unknown or invalid type '+str(type(parent)))
+
+        self.width = width
+
+        if isinstance(parent, gframe_slice):
             self.rows = parent.rows
             self.columns = parent.columns
 
@@ -112,24 +122,24 @@ class grframe_rolling():
                 raise ValueError('Rows and Columns must be specified')
             self.rows = rows
             self.columns = columns
-            # self.this_lowerRow, self.this_upperRow = _indexingParser(self.rows, self.parent.numRows)
-            # self.this_lowerCol, self.this_upperCol = _indexingParser(self.columns, self.parent.numColumns)
 
         else:
             raise NotImplementedError('Unable to parse input of type '+str(type(parent)))
 
 
     def mean_SMA(self):
-        pass
+        operationType = 'mean_SMA'.encode()
+        methodType = self.method.encode()
+        return self.parent_gframe._frame.rolling(operationType, self.width, methodType, self.rows, self.columns)
 
     def mean_EMA(self):
-        pass
+        raise NotImplementedError()
 
     def min(self):
-        pass
+        raise NotImplementedError()
 
     def max(self):
-        pass
+        raise NotImplementedError()
 
 
     def getUID(self):
@@ -181,18 +191,6 @@ class gframe():
         elif isinstance(item, tuple): # we should assume this is (rows, columns)
             return gframe_slice(parent=self, rows=item[0], columns=item[1])
 
-
-    # def _gpuOperation_thisOther(self, operationType, this_lowerRow, this_upperRow, this_lowerCol, this_upperCol, other, inPlace):
-    #     # "other" is an arbitrary vector which needs to be copied up to the gpu
-    #
-    #     other = other.reshape(other.size, ).astype(np.float32)
-    #     operationType = operationType.encode()
-    #
-    #     self._frame.gpuOperation_this( operationType, this_lowerRow, this_upperRow, this_lowerCol, this_upperCol, other, inPlace )
-    #
-    #     # so we don't necessarily know who called this, but results should always be the same ...
-    #     if not inPlace:
-    #         return self._frame.retreive_results()
 
 
     def _gpuOperation_thisOther(self, operationType, this_rowSelection, this_colSelection, other, inPlace):
@@ -272,18 +270,26 @@ if __name__ == '__main__':
 
     other = np.random.rand(size, size)
 
+    test = myFrame['a'].rolling(width=25).mean_SMA()
+
+    # looks reasonable?
+    import matplotlib.pyplot as plt
+    plt.plot(values[:,0])
+    plt.plot(test)
+    plt.show()
+
     #myFrame['a'] += 5
     # myFrame['b'] += 50*other[:,0]
     #
-    test = myFrame['a'] > 0.5
+    #test = myFrame['a'] > 0.5
 
     #b = myFrame[:,[0,1,2]]
 
     #a = myFrame[['b', 'c']]
     #print(a)
     #
-    frameValues1 = myFrame._frame.retreive_array()
-    print(frameValues1)
+    # frameValues1 = myFrame._frame.retreive_array()
+    # print(frameValues1)
 
     #
     # myFrame['g'] = np.random.rand(size)
