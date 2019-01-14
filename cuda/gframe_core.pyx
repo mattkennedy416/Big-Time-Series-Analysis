@@ -25,6 +25,7 @@ cdef extern from "src/gframe.hh":
         void gpuOperation_rolling(char*, int, char*, np.int32_t*, int, np.int32_t*, int)
         void gpuOperation_isnan(np.int32_t*, int, np.int32_t*, int)
         void gpuOperation_nan2num(np.int32_t*, int, np.int32_t*, int, bool)
+        void gpuOperation_interpolate(np.int32_t*, int, np.int32_t*, int, np.float32_t*, int, np.float32_t*, int)
 
 
 
@@ -118,8 +119,8 @@ cdef class gframe:
         elif isinstance(selection, np.ndarray):
             selectionArray = selection
 
-        print('Selection:', selection)
-        print('SelectionArray:', selectionArray)
+        # print('Selection:', selection)
+        # print('SelectionArray:', selectionArray)
 
         return selectionArray.astype(np.int32)
 
@@ -135,6 +136,19 @@ cdef class gframe:
 
         #self.g.gpuOperation_this('add'.encode(), this_lowerRow, this_upperRow, this_lowerCol, this_upperCol, &other[0], len(other), inPlace)
         self.g.gpuOperation_thisOther(opType, &this_rowArray[0], len(this_rowArray), &this_colArray[0], len(this_colArray), &other[0], len(other), inPlace)
+
+
+    def interpolate(self, rowSelection, colSelection, originalTimes, newTimes):
+        cdef np.ndarray[ndim=1, dtype=np.int32_t] rowArray = self._indexSelectionToArray(rowSelection)
+        cdef np.ndarray[ndim=1, dtype=np.int32_t] colArray = self._indexSelectionToArray(colSelection)
+        cdef np.ndarray[ndim=1, dtype=np.float32_t] originalTimesArray = originalTimes.astype(np.float32)
+        cdef np.ndarray[ndim=1, dtype=np.float32_t] newTimesArray = newTimes.astype(np.float32)
+
+        self.g.gpuOperation_interpolate(&rowArray[0], len(rowArray), &colArray[0], len(colArray), &originalTimesArray[0], len(originalTimesArray), &newTimesArray[0], len(newTimesArray))
+
+        return self.retreive_results()
+
+
 
 
     def rolling(self, char* opType, int width, char* method, rowSelection, colSelection):

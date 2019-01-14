@@ -4,6 +4,66 @@ import gts
 from copy import copy
 
 
+
+class gframe_rolling():
+    # similar to gframe_slice above this is going to be a pseudo-wrapper which basically just contains instructions for the gpu to process on demand?
+
+    def __init__(self, parent, width, rows=None, columns=None, method='center'):
+        # if a gframe_slice is input as the parent, then we already have the rows and columns
+        # otherwise if a gframe is given as the parent, then rows and columns need to be explicitly defined
+
+        methodTypes = ('backward', 'center')
+        # backward windowing looks at window width behind the current point
+        # center windowing looks at a half window width at either side of current point
+        if method not in methodTypes:
+            raise ValueError('Method must be in: '+str(methodTypes))
+        self.method = method
+
+        if isinstance(parent, gframe_slice):
+            self.parent_slice = parent
+            self.parent_gframe = parent.parent
+        elif isinstance(parent, gframe):
+            self.parent_slice = None
+            self.parent_gframe = parent
+        else:
+            raise TypeError('gframe_rolling() initiating parent is of unknown or invalid type '+str(type(parent)))
+
+        self.width = width
+
+        if isinstance(parent, gframe_slice):
+            self.rows = parent.rows
+            self.columns = parent.columns
+
+        elif isinstance(parent, gframe):
+            if rows is None or columns is None:
+                raise ValueError('Rows and Columns must be specified')
+            self.rows = rows
+            self.columns = columns
+
+        else:
+            raise NotImplementedError('Unable to parse input of type '+str(type(parent)))
+
+
+    def mean_SMA(self):
+        operationType = 'mean_SMA'.encode()
+        methodType = self.method.encode()
+        return self.parent_gframe._frame.rolling(operationType, self.width, methodType, self.rows, self.columns)
+
+    def mean_EMA(self):
+        raise NotImplementedError()
+
+    def min(self):
+        raise NotImplementedError()
+
+    def max(self):
+        raise NotImplementedError()
+
+
+    def getUID(self):
+        return self.parent.getUID()
+
+
+
 def _indexingParser(input, maxLength):
     # input can be a slice, integer, or consecutive list
     # note that non-consecutive lists are not yet supported
@@ -93,68 +153,15 @@ class gframe_slice():
             return self.parent.nan2num(self.rows, self.columns, inPlace)
 
 
+    def interpolate(self, originalTimes, newTimes):
+        return self.parent.interpolate(originalTimes, newTimes, self.rows, self.columns)
+
+
 
     def rolling(self, width, method='backward'):
         # lets have backward be the default since center will give you future information, which depending on the application can be very bad
         return gframe_rolling(parent=self, width=width, rows=self.rows, columns=self.columns, method=method)
 
-
-class gframe_rolling():
-    # similar to gframe_slice above this is going to be a pseudo-wrapper which basically just contains instructions for the gpu to process on demand?
-
-    def __init__(self, parent, width, rows=None, columns=None, method='center'):
-        # if a gframe_slice is input as the parent, then we already have the rows and columns
-        # otherwise if a gframe is given as the parent, then rows and columns need to be explicitly defined
-
-        methodTypes = ('backward', 'center')
-        # backward windowing looks at window width behind the current point
-        # center windowing looks at a half window width at either side of current point
-        if method not in methodTypes:
-            raise ValueError('Method must be in: '+str(methodTypes))
-        self.method = method
-
-        if isinstance(parent, gframe_slice):
-            self.parent_slice = parent
-            self.parent_gframe = parent.parent
-        elif isinstance(parent, gframe):
-            self.parent_slice = None
-            self.parent_gframe = parent
-        else:
-            raise TypeError('gframe_rolling() initiating parent is of unknown or invalid type '+str(type(parent)))
-
-        self.width = width
-
-        if isinstance(parent, gframe_slice):
-            self.rows = parent.rows
-            self.columns = parent.columns
-
-        elif isinstance(parent, gframe):
-            if rows is None or columns is None:
-                raise ValueError('Rows and Columns must be specified')
-            self.rows = rows
-            self.columns = columns
-
-        else:
-            raise NotImplementedError('Unable to parse input of type '+str(type(parent)))
-
-
-    def mean_SMA(self):
-        operationType = 'mean_SMA'.encode()
-        methodType = self.method.encode()
-        return self.parent_gframe._frame.rolling(operationType, self.width, methodType, self.rows, self.columns)
-
-    def mean_EMA(self):
-        raise NotImplementedError()
-
-    def min(self):
-        raise NotImplementedError()
-
-    def max(self):
-        raise NotImplementedError()
-
-
-    def getUID(self):
-        return self.parent.getUID()
 
 
 
@@ -233,6 +240,15 @@ class gframe():
         return self._frame.isnan(rows, columns)
 
 
+    def interpolate(self, originalTimes, newTimes, rows=None, columns=None):
+        if rows is None:
+            rows = slice(None,None,None)
+        if columns is None:
+            columns = slice(None,None,None)
+
+        return self._frame.interpolate(rows, columns, originalTimes, newTimes)
+
+
     def nan2num(self, rows=None, columns=None, inPlace=False):
         if rows is None:
             rows = slice(None,None,None)
@@ -298,20 +314,36 @@ if __name__ == '__main__':
     cols = ['a','b','c','d','e']
     values = np.random.rand(size, len(cols))
 
-    values[0,0] = np.nan
-    values[1,0] = np.inf
-    values[2,0] = -np.inf
+    # values[0,0] = np.nan
+    # values[1,0] = np.inf
+    # values[2,0] = -np.inf
 
     myFrame = gframe(values, cols)
 
-    frameValues = myFrame._frame.retreive_array()
+    originalTimes = np.linspace(0,250, 250)
+    newTimes = np.linspace(0,250, 500)
+    test = myFrame['a'].interpolate(originalTimes, newTimes)
+
+    print(test)
+
+    import matplotlib.pyplot as plt
+
+    plt.plot(originalTimes, values[:,0], '.-')
+    plt.plot(newTimes, test, '.-')
+    plt.show()
 
 
-    other = np.random.rand(size, size)
+    from scipy.signal import savgol_filter
 
-    test1 = myFrame['a'].nan2num()
 
-    print(test1)
+    # frameValues = myFrame._frame.retreive_array()
+    #
+    #
+    # other = np.random.rand(size, size)
+    #
+    # test1 = myFrame['a'].nan2num()
+    #
+    # print(test1)
 
     # test = myFrame['a'].rolling(width=25).mean_SMA()
     #

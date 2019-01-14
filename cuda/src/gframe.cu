@@ -7,6 +7,7 @@ you perform actions with the GPU
 This class will get translated into python via swig
 */
 
+#include <kernel_interpolate.cu>
 #include <nan_kernel.cu>
 #include <gframe_kernel.cu>
 #include <rolling_kernel.cu>
@@ -53,6 +54,8 @@ gframe::gframe (float* array_, int numRows_, int numColumns_) {
 
 	printf("array_host has size: (%i,%i)\n", this_totalRows, this_totalColumns);
 
+	results_host = (float* )malloc(1*sizeof(float)); // lets just initialize this with something so our usual call can use realloc()
+	
 	cudaError_t err = cudaMalloc((void**) &array_device, arraySize);
 	assert(err==0);
 	err = cudaMemcpy(array_device, array_host, arraySize, cudaMemcpyHostToDevice);
@@ -127,8 +130,6 @@ void gframe::gpuOperation_rolling(char* operationType, int width, char* method, 
 		return;
 	}
 		
-	
-	
 	// so I think we always want this operation to be not-in-place
 	// need to cudaMalloc an array for results storing
 	
@@ -178,6 +179,67 @@ void gframe::gpuOperation_rolling(char* operationType, int width, char* method, 
 	
 	
 }
+
+
+void gframe::gpuOperation_interpolate(int* rowArray, int rowArrayLength, int* colArray, int colArrayLength, float* originalTimes, int originalTimesLength, float* newTimes, int newTimesLength) {
+	
+	// this should probably always be a not-in-place operation
+	// and actually I think we want to start a thread for each value of the new time
+	
+	int numElements = newTimesLength*colArrayLength;
+	size_t sizeResults = numElements*sizeof(float);
+	
+	//printf("Allocating results_deivce to size %i\n", sizeResults);
+	cudaMalloc((void **) &results_device, sizeResults);
+
+	int* rowArray_device;
+	int* colArray_device;
+	float* originalTimes_device;
+	float* newTimes_device;
+	
+	cudaMalloc((void **) &rowArray_device, rowArrayLength*sizeof(int));
+	cudaMalloc((void **) &colArray_device, colArrayLength*sizeof(int));
+	cudaMalloc((void **) &originalTimes_device, originalTimesLength*sizeof(float));
+	cudaMalloc((void **) &newTimes_device, newTimesLength*sizeof(float));
+	
+	cudaMemcpy(rowArray_device, rowArray, rowArrayLength*sizeof(int), cudaMemcpyHostToDevice);
+	cudaMemcpy(colArray_device, colArray, colArrayLength*sizeof(int), cudaMemcpyHostToDevice);
+	cudaMemcpy(originalTimes_device, originalTimes, originalTimesLength*sizeof(float), cudaMemcpyHostToDevice);
+	cudaMemcpy(newTimes_device, newTimes, newTimesLength*sizeof(float), cudaMemcpyHostToDevice);
+	
+	dim3 threadsPerBlock(32,32);
+	dim3 numBlocks(newTimesLength/threadsPerBlock.x + 1, colArrayLength/threadsPerBlock.y + 1); // create a thread per col per newTime element
+	
+	printf("Starting blocks (%i,%i)\n", numBlocks.x, numBlocks.y);
+	
+	kernel_linearInterpolation<<<numBlocks, threadsPerBlock>>>(array_device, rowArray, rowArrayLength, colArray, colArrayLength, this_totalColumns, this_totalRows, originalTimes_device, originalTimesLength, newTimes_device, newTimesLength, results_device);
+	//void __global__ kernel_linearInterpolation(float* array_device, int* rowArray, int rowArrayLength, int* colArray, int colArrayLength, int totalCols, int totalRows, float* originalTimes, float* newTimes, float* results)
+	
+//	results_host = (float* )malloc(sizeResults);
+//	cudaMemcpy(results_host, results_device, sizeResults, cudaMemcpyDeviceToHost);
+//	cudaFree(results_device);
+//	
+//	results_totalRows = newTimesLength;
+//	results_totalColumns = colArrayLength;
+	
+	updateHostResults(newTimesLength, colArrayLength);
+		
+}
+
+
+void gframe::updateHostResults(int numRows, int numCols) {
+	
+	int sizeResults = numRows*numCols*sizeof(float);
+	//results_host = (float* )malloc(sizeResults);
+	results_host = (float *)realloc(results_host, sizeResults); // and now realloc the original array
+	cudaMemcpy(results_host, results_device, sizeResults, cudaMemcpyDeviceToHost);
+	
+	results_totalRows = numRows;
+	results_totalColumns = numCols;
+	
+	
+}
+
 
 
 void gframe::gpuOperation_isnan(int* rowArray, int rowArrayLength, int* colArray, int colArrayLength) {

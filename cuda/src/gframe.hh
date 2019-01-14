@@ -43,10 +43,13 @@ public:
   void gpuOperation_isnan(int* rowArray, int rowArrayLength, int* colArray, int colArrayLength);
   void gpuOperation_nan2num(int* rowArray, int rowArrayLength, int* colArray, int colArrayLength, bool inPlace);
   
+  void gpuOperation_interpolate(int* rowArray, int rowArrayLength, int* colArray, int colArrayLength, float* originalTimes, int originalTimesLength, float* newTimes, int newTimesLength);
+  
   //void operateOnSection(int minRow, int maxRow, int minCol, int maxCol);
   void cpuSort(int colInd, int* index );
   void updateHostFromGPU();
 
+  void updateHostResults(int numRows, int numCols);
   void retreive_results(float* numpyArray);
   void retreive_results_shape(int* shapeArray);
   void retreive_array(float* numpyArray);
