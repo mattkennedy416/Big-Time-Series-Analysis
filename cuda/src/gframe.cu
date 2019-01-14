@@ -7,6 +7,7 @@ you perform actions with the GPU
 This class will get translated into python via swig
 */
 
+#include <nan_kernel.cu>
 #include <gframe_kernel.cu>
 #include <rolling_kernel.cu>
 #include <gframe.hh>
@@ -177,6 +178,104 @@ void gframe::gpuOperation_rolling(char* operationType, int width, char* method, 
 	
 	
 }
+
+
+void gframe::gpuOperation_isnan(int* rowArray, int rowArrayLength, int* colArray, int colArrayLength) {
+	
+	int numElements = rowArrayLength*colArrayLength;
+	size_t sizeResults = numElements*sizeof(float);
+	
+	//float* results_device;
+	printf("Allocating results_deivce to size %i\n", sizeResults);
+	cudaMalloc((void **) &results_device, sizeResults);
+	
+	int* rowArray_device;
+	int* colArray_device;
+	cudaMalloc((void **) &rowArray_device, rowArrayLength*sizeof(int));
+	cudaMalloc((void **) &colArray_device, colArrayLength*sizeof(int));
+	cudaMemcpy(rowArray_device, rowArray, rowArrayLength*sizeof(int), cudaMemcpyHostToDevice);
+	cudaMemcpy(colArray_device, colArray, colArrayLength*sizeof(int), cudaMemcpyHostToDevice);
+	
+	
+	dim3 threadsPerBlock(32,32);
+	dim3 numBlocks(rowArrayLength/threadsPerBlock.x + 1, colArrayLength/threadsPerBlock.y + 1);
+	
+	kernel_isnan<<<numBlocks, threadsPerBlock>>>(array_device, rowArray_device, rowArrayLength, colArray_device, colArrayLength, this_totalColumns, this_totalRows, results_device);
+	// isnan(float* array_device, int* rowArray, int rowArrayLength, int* colArray, int colArrayLength, int totalCols, int totalRows, float* results)
+	
+	cudaDeviceSynchronize();
+	
+	
+	// lets actually just use the standard last-result retrieval
+	// free(results_host);
+	results_host = (float* )malloc(sizeResults);
+	cudaMemcpy(results_host, results_device, sizeResults, cudaMemcpyDeviceToHost);
+	cudaFree(results_device);
+	
+	printf("Setting results size information to: (%i,%i)\n", rowArrayLength, colArrayLength);
+	results_totalRows = rowArrayLength;
+	results_totalColumns = colArrayLength;
+	
+}
+
+
+
+void gframe::gpuOperation_nan2num(int* rowArray, int rowArrayLength, int* colArray, int colArrayLength, bool inPlace) {
+	
+	int numElements;
+	if (inPlace)
+		numElements = 1; // still need to define something even if we aren't going to be writing to it
+	else
+		numElements = rowArrayLength*colArrayLength;
+	
+	printf("C++ nan2num: numElements=%i\n", numElements);
+	
+	//int numElements = rowArrayLength*colArrayLength;
+	size_t sizeResults = numElements*sizeof(float);
+	
+	//printf("Allocating results_deivce to size %i\n", sizeResults);
+	cudaMalloc((void **) &results_device, sizeResults);
+	
+	int* rowArray_device;
+	int* colArray_device;
+	cudaMalloc((void **) &rowArray_device, rowArrayLength*sizeof(int));
+	cudaMalloc((void **) &colArray_device, colArrayLength*sizeof(int));
+	cudaMemcpy(rowArray_device, rowArray, rowArrayLength*sizeof(int), cudaMemcpyHostToDevice);
+	cudaMemcpy(colArray_device, colArray, colArrayLength*sizeof(int), cudaMemcpyHostToDevice);
+	
+	
+	dim3 threadsPerBlock(32,32);
+	dim3 numBlocks(rowArrayLength/threadsPerBlock.x + 1, colArrayLength/threadsPerBlock.y + 1);
+	
+	kernel_nan2num<<<numBlocks, threadsPerBlock>>>(array_device, rowArray_device, rowArrayLength, colArray_device, colArrayLength, this_totalColumns, this_totalRows, inPlace, results_device);
+	// void __global__ kernel_nan2num(float* array_device, int* rowArray, int rowArrayLength, int* colArray, int colArrayLength, int totalCols, int totalRows, bool inPlace, float* results)
+
+	cudaDeviceSynchronize();
+	
+	
+	if (inPlace)
+	{
+		// don't think we need to do anything here
+	}
+	else
+	{
+		// lets actually just use the standard last-result retrieval
+		// free(results_host);
+		results_host = (float* )malloc(sizeResults);
+		cudaMemcpy(results_host, results_device, sizeResults, cudaMemcpyDeviceToHost);
+		cudaFree(results_device);
+		
+		printf("Setting results size information to: (%i,%i)\n", rowArrayLength, colArrayLength);
+		results_totalRows = rowArrayLength;
+		results_totalColumns = colArrayLength;
+	}
+
+	
+}
+
+
+
+
 
 
 //void gframe::gpuOperation_thisOther(char* operationType, int this_lowerRow, int this_upperRow, int this_lowerCol, int this_upperCol, float* other, int otherLength, bool inPlace) {

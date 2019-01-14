@@ -83,6 +83,17 @@ class gframe_slice():
         if value is None:
             return None
 
+    def isnan(self):
+        return self.parent.isnan(self.rows, self.columns)
+
+    def nan2num(self, inPlace=False):
+        if inPlace:
+            self.parent.nan2num(self.rows, self.columns, inPlace)
+        else:
+            return self.parent.nan2num(self.rows, self.columns, inPlace)
+
+
+
     def rolling(self, width, method='backward'):
         # lets have backward be the default since center will give you future information, which depending on the application can be very bad
         return gframe_rolling(parent=self, width=width, rows=self.rows, columns=self.columns, method=method)
@@ -213,6 +224,26 @@ class gframe():
         # "other" is another subset of this frame and already in gpu memory
         pass
 
+    def isnan(self, rows=None, columns=None):
+        if rows is None:
+            rows = slice(None,None,None)
+        if columns is None:
+            columns = slice(None,None,None)
+
+        return self._frame.isnan(rows, columns)
+
+
+    def nan2num(self, rows=None, columns=None, inPlace=False):
+        if rows is None:
+            rows = slice(None,None,None)
+        if columns is None:
+            columns = slice(None,None,None)
+
+        if inPlace:
+            self._frame.nan2num(rows, columns, inPlace)
+        else:
+            return self._frame.nan2num(rows, columns, inPlace)
+
 
     def getUID(self):
         return self._frame.getUID()
@@ -266,17 +297,29 @@ if __name__ == '__main__':
     size = 250
     cols = ['a','b','c','d','e']
     values = np.random.rand(size, len(cols))
+
+    values[0,0] = np.nan
+    values[1,0] = np.inf
+    values[2,0] = -np.inf
+
     myFrame = gframe(values, cols)
+
+    frameValues = myFrame._frame.retreive_array()
+
 
     other = np.random.rand(size, size)
 
-    test = myFrame['a'].rolling(width=25).mean_SMA()
+    test1 = myFrame['a'].nan2num()
 
-    # looks reasonable?
-    import matplotlib.pyplot as plt
-    plt.plot(values[:,0])
-    plt.plot(test)
-    plt.show()
+    print(test1)
+
+    # test = myFrame['a'].rolling(width=25).mean_SMA()
+    #
+    # # looks reasonable?
+    # import matplotlib.pyplot as plt
+    # plt.plot(values[:,0])
+    # plt.plot(test)
+    # plt.show()
 
     #myFrame['a'] += 5
     # myFrame['b'] += 50*other[:,0]

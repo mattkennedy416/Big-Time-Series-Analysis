@@ -23,6 +23,8 @@ cdef extern from "src/gframe.hh":
         void concat(np.float32_t*, int, int, int)
         void cpuSort(int, np.int32_t*)
         void gpuOperation_rolling(char*, int, char*, np.int32_t*, int, np.int32_t*, int)
+        void gpuOperation_isnan(np.int32_t*, int, np.int32_t*, int)
+        void gpuOperation_nan2num(np.int32_t*, int, np.int32_t*, int, bool)
 
 
 
@@ -145,6 +147,28 @@ cdef class gframe:
 
 
 
+    def isnan(self, rowSelection, colSelection):
+        cdef np.ndarray[ndim=1, dtype=np.int32_t] rowArray = self._indexSelectionToArray(rowSelection)
+        cdef np.ndarray[ndim=1, dtype=np.int32_t] colArray = self._indexSelectionToArray(colSelection)
+
+        self.g.gpuOperation_isnan(&rowArray[0], len(rowArray), &colArray[0], len(colArray))
+
+        return self.retreive_results().astype(np.bool)
+
+
+    def nan2num(self, rowSelection, colSelection, bool inPlace):
+        cdef np.ndarray[ndim=1, dtype=np.int32_t] rowArray = self._indexSelectionToArray(rowSelection)
+        cdef np.ndarray[ndim=1, dtype=np.int32_t] colArray = self._indexSelectionToArray(colSelection)
+
+        self.g.gpuOperation_nan2num(&rowArray[0], len(rowArray), &colArray[0], len(colArray), inPlace)
+
+        if inPlace:
+            pass
+        else:
+            return self.retreive_results()
+
+
+
 
     def _generateUniqueHeader(self, keyBase):
         # keyBase is the requested value, iterate on this until we find something unique
@@ -170,6 +194,8 @@ cdef class gframe:
             return values[index,:]
         else:
             return values[index[::-1],:]
+
+
 
 
 
