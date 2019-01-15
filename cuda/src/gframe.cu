@@ -207,12 +207,18 @@ void gframe::gpuOperation_interpolate(int* rowArray, int rowArrayLength, int* co
 	cudaMemcpy(originalTimes_device, originalTimes, originalTimesLength*sizeof(float), cudaMemcpyHostToDevice);
 	cudaMemcpy(newTimes_device, newTimes, newTimesLength*sizeof(float), cudaMemcpyHostToDevice);
 	
-	dim3 threadsPerBlock(32,32);
-	dim3 numBlocks(newTimesLength/threadsPerBlock.x + 1, colArrayLength/threadsPerBlock.y + 1); // create a thread per col per newTime element
+	//dim3 threadsPerBlock(32,32);
+	//dim3 numBlocks(newTimesLength/threadsPerBlock.x + 1, colArrayLength/threadsPerBlock.y + 1); // create a thread per col per newTime element
 	
-	printf("Starting blocks (%i,%i)\n", numBlocks.x, numBlocks.y);
+	int threadsPerBlock = 128;
+	int numBlocks = newTimesLength/threadsPerBlock + 1;
 	
-	kernel_linearInterpolation<<<numBlocks, threadsPerBlock>>>(array_device, rowArray, rowArrayLength, colArray, colArrayLength, this_totalColumns, this_totalRows, originalTimes_device, originalTimesLength, newTimes_device, newTimesLength, results_device);
+	
+	//printf("Starting blocks (%i,%i)\n", numBlocks.x, numBlocks.y);
+	
+	for (int col=0; col<colArrayLength; col++)
+		kernel_linearInterpolation<<<numBlocks, threadsPerBlock>>>(array_device, rowArray, rowArrayLength, col, colArrayLength, this_totalColumns, this_totalRows, originalTimes_device, originalTimesLength, newTimes_device, newTimesLength, results_device);
+	
 	//void __global__ kernel_linearInterpolation(float* array_device, int* rowArray, int rowArrayLength, int* colArray, int colArrayLength, int totalCols, int totalRows, float* originalTimes, float* newTimes, float* results)
 	
 //	results_host = (float* )malloc(sizeResults);

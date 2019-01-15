@@ -309,31 +309,43 @@ class gframe():
 if __name__ == '__main__':
 
     import numpy as np
-
-    size = 250
-    cols = ['a','b','c','d','e']
-    values = np.random.rand(size, len(cols))
-
-    # values[0,0] = np.nan
-    # values[1,0] = np.inf
-    # values[2,0] = -np.inf
-
-    myFrame = gframe(values, cols)
-
-    originalTimes = np.linspace(0,250, 250)
-    newTimes = np.linspace(0,250, 500)
-    test = myFrame['a'].interpolate(originalTimes, newTimes)
-
-    print(test)
-
+    import time
     import matplotlib.pyplot as plt
+    from scipy.interpolate import interp1d
 
-    plt.plot(originalTimes, values[:,0], '.-')
-    plt.plot(newTimes, test, '.-')
+    gpuTimes = []
+    scipyTimes = []
+
+    sizes = [250, 500, 1000, 2500, 10000, 100000]
+    #sizes = [250]
+    for size in sizes:
+        cols = ['a','b','c','d','e']
+        values = np.random.rand(size, len(cols))
+
+
+        myFrame = gframe(values, cols)
+
+        originalTimes = np.linspace(0,size, size)
+        newTimes = np.linspace(0,size, 2*size)
+
+
+        gpuStart = time.time()
+        test = myFrame['a'].interpolate(originalTimes, newTimes)
+        gpuTimes.append(time.time()-gpuStart)
+
+        cpuStart = time.time()
+        f = interp1d(originalTimes, values[:,0],)
+        ynew = f(newTimes)
+        scipyTimes.append( time.time() - cpuStart )
+
+    plt.plot(sizes, gpuTimes, label='gpu')
+    plt.plot(sizes, scipyTimes, label='scipy')
+    plt.legend()
     plt.show()
 
 
-    from scipy.signal import savgol_filter
+
+
 
 
     # frameValues = myFrame._frame.retreive_array()

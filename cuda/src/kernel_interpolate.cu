@@ -1,13 +1,15 @@
 #include <stdio.h>
 #include <math.h>
 
-void __global__ kernel_linearInterpolation(float* array_device, int* rowArray, int rowArrayLength, int* colArray, int colArrayLength, int totalCols, int totalRows, float* originalTimes, int originalTimesLength, float* newTimes, int newTimesLength, float* results_device)
+void __global__ kernel_linearInterpolation(float* array_device, int* rowArray, int rowArrayLength, int col, int colArrayLength, int totalCols, int totalRows, float* originalTimes, int originalTimesLength, float* newTimes, int newTimesLength, float* results_device)
 {
 	
 	// where original times and new times should probably be unix time? but technically won't matter probably
 	
 	int n = blockIdx.x * blockDim.x + threadIdx.x;
-	int m = blockIdx.y * blockDim.y + threadIdx.y;
+	//int m = blockIdx.y * blockDim.y + threadIdx.y;
+	
+	int m = col;
 	
 	if (n < newTimesLength && m < colArrayLength)
 	{
@@ -54,36 +56,56 @@ void __global__ kernel_linearInterpolation(float* array_device, int* rowArray, i
 		// we now need to find the points before and after ...
 		// do we need to iterate through the entire originalTimes vector or is there some way we can approximate the starting location?
 		
-		for (int originalTimeLoc=0; originalTimeLoc<originalTimesLength-1; originalTimeLoc++)
+		//float origSampleRate = (originalTimes[originalTimesLength-1] - originalTimes[0]) / originalTimesLength;
+		//float newSampleRate = (newTimes[newTimesLength-1] - newTimes[0]) / newTimesLength;
+		
+		//int originalTimeLoc = (newTime - newTimes[0]) / (originalTimes[originalTimesLength-1] - originalTimes)
+			
+		float newTimePerc = (newTime - newTimes[0]) / (newTimes[newTimesLength-1] - newTimes[0]);
+		int estimation = newTimePerc * originalTimesLength; // start at approximately the correct point
+		
+		int iterationsToFindMatch = 0;
+		
+		int originalTimeLoc;
+		if (originalTimes[estimation] > newTime)
 		{
-//			if (newTime > originalTimes[originalTimeLoc+1]) // gone too far and haven't found anything
-//			{
-//				results_device[resultsInd] = NAN;
-//				return;
-//			}
-			
-			
-			if ( originalTimes[originalTimeLoc] <= newTime && newTime <= originalTimes[originalTimeLoc+1] )
+			// time we guessed is greater than the time we want ... so walk backwards?
+			for (originalTimeLoc=estimation; originalTimeLoc>0; originalTimeLoc--)
 			{
-				printf("Found our location: %f < %f < %f\n", originalTimes[originalTimeLoc], newTime, originalTimes[originalTimeLoc+1]);
-				// alright this is our point
-				int arrayInd1 = originalTimeLoc*totalCols + m;
-				int arrayInd2 = (originalTimeLoc+1)*totalCols + m;				
-				
-				float valueChange = (array_device[arrayInd2] - array_device[arrayInd1]);
-				
-				// we need to figure out what percentage the newTime is between the two points
-				float origTime1 = originalTimes[originalTimeLoc];
-				float origTime2 = originalTimes[originalTimeLoc+1];
-				
-				float perc = (newTime - origTime1) / (origTime2 - origTime1);
-				
-				results_device[resultsInd] = array_device[arrayInd1] + perc*valueChange;
-				
-				return;			
-				
+				if (originalTimes[originalTimeLoc] < newTime)
+					break;
+				iterationsToFindMatch++;
 			}
 		}
+		else
+		{
+			// the time we guessed is greater than the time we want ... so walk forwards?
+			for (originalTimeLoc=estimation; originalTimeLoc<originalTimesLength; originalTimeLoc++)
+			{
+				if (originalTimes[originalTimeLoc] > newTime)
+				{
+					originalTimeLoc--; // want the left side point
+					break;
+				}
+				iterationsToFindMatch++;
+			}
+		}
+		
+		printf("Loc %i needed %i iterations, starting from %i -> %i\n", n, iterationsToFindMatch, estimation, originalTimeLoc);
+		
+		
+		int arrayInd1 = originalTimeLoc*totalCols + m;
+		int arrayInd2 = (originalTimeLoc+1)*totalCols + m;				
+		
+		float valueChange = (array_device[arrayInd2] - array_device[arrayInd1]);
+		
+		// we need to figure out what percentage the newTime is between the two points
+		float origTime1 = originalTimes[originalTimeLoc];
+		float origTime2 = originalTimes[originalTimeLoc+1];
+		
+		float perc = (newTime - origTime1) / (origTime2 - origTime1);
+		
+		results_device[resultsInd] = array_device[arrayInd1] + perc*valueChange;
 		
 	
 	}
