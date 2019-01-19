@@ -314,7 +314,7 @@ if __name__ == '__main__':
     from scipy.interpolate import interp1d
 
     gpuTimes = []
-    scipyTimes = []
+    cpuTimes = []
 
     sizes = [250, 500, 1000, 2500, 10000, 100000]
     #sizes = [250]
@@ -330,16 +330,18 @@ if __name__ == '__main__':
 
 
         gpuStart = time.time()
-        test = myFrame['a'].interpolate(originalTimes, newTimes)
+        #test = myFrame['a'].interpolate(originalTimes, newTimes)
+        test = myFrame[cols] > 0.5
         gpuTimes.append(time.time()-gpuStart)
 
         cpuStart = time.time()
-        f = interp1d(originalTimes, values[:,0],)
-        ynew = f(newTimes)
-        scipyTimes.append( time.time() - cpuStart )
+        #f = interp1d(originalTimes, values[:,0],)
+        #ynew = f(newTimes)
+        test2 = values > 5
+        cpuTimes.append( time.time() - cpuStart )
 
     plt.plot(sizes, gpuTimes, label='gpu')
-    plt.plot(sizes, scipyTimes, label='scipy')
+    plt.plot(sizes, cpuTimes, label='cpu')
     plt.legend()
     plt.show()
 
