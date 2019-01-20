@@ -15,7 +15,8 @@ class load():
 
         possibilities = [filename,
                          self.subdir+os.sep+filename,
-                         '../'+self.subdir+os.sep+filename]
+                         '../'+self.subdir+os.sep+filename,
+                         '../../'+self.subdir+os.sep+filename]
 
         for possibility in possibilities:
             if os.path.isfile(possibility):
