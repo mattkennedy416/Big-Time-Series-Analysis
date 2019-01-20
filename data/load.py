@@ -43,6 +43,7 @@ class load():
         del frame['Date']
         return frame.values
 
+
     def TICC(self):
         filename = 'TICC_example_data.txt'
         filepath = self._findFile(filename)
@@ -51,10 +52,24 @@ class load():
         return frame.values
 
 
+    def ekg(self):
+        # from: https://github.com/mrahtz/sanger-machine-learning-workshop
+        import struct
 
+        filename = 'ekg.dat'
+        filepath = self._findFile(filename)
 
-
-
+        with open(filepath, 'rb') as input_file:
+            data_raw = input_file.read()
+        n_bytes = len(data_raw)
+        n_shorts = n_bytes / 2
+        # data is stored as 16-bit samples, little-endian
+        # '<': little-endian
+        # 'h': short
+        unpack_string = '<%dh' % n_shorts
+        # sklearn seems to throw up if data not in float format
+        data_shorts = np.array(struct.unpack(unpack_string, data_raw)).astype(float)
+        return data_shorts
 
 
 
@@ -63,6 +78,6 @@ class load():
 
 if __name__ == '__main__':
 
-    data = load().amazon()
+    data = load().ekg()
 
     print(data)
