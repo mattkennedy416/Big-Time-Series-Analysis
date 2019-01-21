@@ -3,6 +3,7 @@
 
 
 from sklearn.cluster import KMeans
+from external.sklearn.OPTICS import OPTICS
 import numpy as np
 
 
@@ -12,11 +13,15 @@ import numpy as np
 
 class STFT_Cluster():
 
-    def __init__(self, n_clusters, windowSize, windowingType='center'):
+    def __init__(self, n_clusters, windowSize, windowingType='center', clusterer='OPTICS'):
 
         self.windowSize = windowSize
         self.n_clusters = n_clusters
-        self.clusterer = KMeans(n_clusters=self.n_clusters)
+
+        if clusterer == 'KMeans':
+            self.clusterer = KMeans(n_clusters=self.n_clusters)
+        elif clusterer == 'OPTICS':
+            self.clusterer = OPTICS()
 
         self.labels_ = None
 
@@ -58,8 +63,30 @@ class STFT_Cluster():
     def fit(self, data):
         stft = self._createSTFTSWindows(data)
         self.clusterer.fit(stft)
-
         self.labels_ = self._genLabelsFromModel(model=self.clusterer)
+        #
+        # opticsModel = OPTICS()
+        # opticsModel.fit(stft)
+        #
+        # # can we now fit a KMeans model to these cluster centers?
+        # clusterCenters = np.zeros(shape=(len(set(opticsModel.labels_))-1, stft.shape[1])) # don't include the -1 cluster?
+        # for label in set(opticsModel.labels_):
+        #     if label == -1:
+        #         continue
+        #     clusterSTFTs = stft[opticsModel.labels_ == label, :]
+        #     clusterCenters[label,:] = np.mean(clusterSTFTs, axis=0)
+        #
+        # KMeansModel = KMeans(n_clusters=clusterCenters.shape[0], init=clusterCenters)
+        # results = KMeansModel.fit_predict(stft)
+        #
+        # plt.plot(data)
+        # plt.plot(opticsModel.labels_)
+        # plt.plot(results)
+        # plt.show()
+        #
+        # print('')
+
+
 
 
     def fit_predict(self, data):
@@ -72,6 +99,8 @@ class STFT_Cluster():
 
     def predict(self, data):
         # lets also implement a method for predicting on new data
+        if isinstance(self.clusterer, OPTICS):
+            raise NotImplementedError('OPTICS does not currently support prediction of new data')
 
         stfs = self._createSTFTSWindows(data)
 
@@ -133,11 +162,11 @@ if __name__ == '__main__':
     plt.plot(data[0:5000])
     plt.plot(100*(model.labels_-5))
 
-    plt.figure()
-    results = model.predict(data[5000:6000])
-    plt.plot(data[5000:6000])
-
-    plt.plot(100*(results-5))
+    # plt.figure()
+    # results = model.predict(data[5000:6000])
+    # plt.plot(data[5000:6000])
+    #
+    # plt.plot((results-25))
     plt.show()
 
 
