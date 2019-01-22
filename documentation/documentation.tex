@@ -6,30 +6,67 @@
 \usepackage{graphicx}
 \begin{document}
 	
-
-
-\begin{chapter}{Included External Packages}
 	
-\begin{section}{Banpei}
-	content...
+\chapter{Common Dependencies}
+
+\section{Python Core}
+\begin{itemize}
+\item Numpy
+\item Scipy
+\item Statsmodels
+\item Sci-Kit Learn
+\item TensorFlow
+\item Keras
+\end{itemize}
+
+
+\begin{section}{Visualization - Optional?}
+\begin{itemize}
+\item MatPlotLib
+\item Bokeh
+\item Seaborn
+\end{itemize}
 \end{section}
 
 
-\begin{section}{Contextual Anomaly Detector}
-	content...
-\end{section}
-	
-\begin{section}{Donut}
-adsf	
-\end{section}
+\section{Third Party}
 
-\begin{section}{Luminol}
-	asdf
-\end{section}
+\begin{itemize}
+\item CUDA Development toolkit (available through Anaconda?)
+\item numba
+\item ArrayFire?
+\item MAGMA?
+\item MKL
+\end{itemize}
 
-\begin{section}{Banpei}
-	content...
-\end{section}
+
+
+
+
+
+
+\chapter{Included External Packages}
+
+\section{Banpei}
+
+Anomaly detection using Singular Spectrum Transformation and Hotelling -- the bindings for these have been placed in ./anomalies/*.
+
+
+
+\section{Context Anomaly Detector}
+Not really sure how this works... are there examples or more documentation somewhere?
+
+
+\section{Donut}
+Anomaly detection model built around tensorflow and keras. Not sure what the best way to integrate this will be?
+
+
+
+\section{Luminol}
+Luminol has what looks like a lot of pretty robust / automatic anomaly detection algorithms -- does a bunch of tests/checks automatically and sees what comes back.\\
+
+Seems a bit complicated to get into (their models expect a special time series class), but would definitely be worth fully integrating. 
+
 
 
 \begin{section}{Nupic}
@@ -43,6 +80,10 @@ adsf
 \begin{section}{Pwlf}
 	asdf
 \end{section}
+
+\section{StatsModels Time Series Analysis}
+
+statsmodels.tsa has a lot of good stuff, not for clustering or segmenting, but regression, change point detection, probably a lot of other things too
 
 
 
@@ -59,7 +100,7 @@ adsf
 \end{section}
 
 \begin{section}{Robust PCA}
-	content...
+Small package which implements Robust Principal Component Analysis. The bindings for this have been placed in ./encoding/RPCA.py.
 \end{section}
 
 
@@ -106,8 +147,6 @@ adsf
 \end{section}
 
 
-
-\end{chapter}
 	
 	
 \end{document}
