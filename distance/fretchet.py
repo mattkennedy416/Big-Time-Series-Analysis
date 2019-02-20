@@ -7,6 +7,9 @@ from distance.euclidean import eucl_dist, point_to_seg, circle_line_intersection
 import numpy as np
 
 def frechet(P, Q):
+
+    raise NotImplemented('Direct port from traj-dist seems to give indexing errors, not fixing for now')
+
     """
     Usage
     -----
