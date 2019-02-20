@@ -5,7 +5,14 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
 from distance.lcss import lcss
+from distance.discret_frechet import discret_frechet
+from distance.fretchet import frechet
 
+
+plotSamples = False
+runLCSS = False
+runDiscretFretchet = False
+runFretchet = True
 
 
 allSamples = load().auslan()
@@ -27,45 +34,73 @@ for label in wantedLabels:
     samples.append(sample)
 
 
+if plotSamples:
+    for sample in samples:
+        plt.figure()
+        plt.plot(sample)
 
-# for sample in samples:
-#     plt.figure()
-#     plt.plot(sample)
-#
-#     # fig = plt.figure()
-#     # ax = fig.add_subplot(111, projection='3d')
-#     # ax.plot(x1, y1, z1)
-#     # plt.title(label)
-# plt.show()
-
-
-
-# note that eps is the distance limit in space, not in time
+        # fig = plt.figure()
+        # ax = fig.add_subplot(111, projection='3d')
+        # ax.plot(x1, y1, z1)
+        # plt.title(label)
+    plt.show()
 
 
-compares = [(0,1), (0,3)]
-
-import numpy as np
-epss = np.linspace(0.01, 0.5, 25)
 
 
-dists = {}
-for comp in compares:
-    dists[comp] = []
+if runFretchet:
+    compares = [(0,1), (0,3)]
 
-# so yeah this works if we can find an appropriate eps
+    for a,b in compares:
+        t0 = samples[a][:, 0:2]
+        t1 = samples[b][:, 0:2]
+        dist = frechet(t0, t1)
 
-for eps in epss:
-    for a, b in compares:
-        dist = lcss(samples[a][:,0:3], samples[b][:,0:3], eps=eps)
-        #print(a, b, dist)
+        print(a, b, dist)
 
-        dists[(a,b)].append(dist)
 
-for comp in compares:
-    plt.plot(epss, dists[comp], label=str(comp))
-plt.legend()
-plt.show()
+
+
+if runDiscretFretchet:
+    compares = [(0, 1), (0, 3)]
+
+    for a,b in compares:
+        t0 = samples[a][:, 0:2]
+        t1 = samples[b][:, 0:2]
+        dist = discret_frechet(t0, t1)
+
+        print(a, b, dist)
+
+
+
+
+
+
+
+if runLCSS:
+    # note that eps is the distance limit in space, not in time
+    compares = [(0,1), (0,3)]
+
+    import numpy as np
+    epss = np.linspace(0.01, 0.5, 25)
+
+    dists = {}
+    for comp in compares:
+        dists[comp] = []
+
+    # so yeah this works if we can find an appropriate eps
+
+    for eps in epss:
+        for a, b in compares:
+            dist = lcss(samples[a][:,0:3], samples[b][:,0:3], eps=eps)
+            #print(a, b, dist)
+
+            dists[(a,b)].append(dist)
+
+    for comp in compares:
+        plt.plot(epss, dists[comp], label=str(comp))
+    plt.legend()
+    plt.show()
 
 
 

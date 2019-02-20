@@ -1,8 +1,16 @@
 
+
+# WARPING distance -- can theoretically handle noisy data better than DTW
+
+# port from trajectory-distance package, with expansion from 2D to 3D spatial data
+
+# note that this can easily be ported to C or GPU if needed
+
+
 import numpy as np
 from distance.euclidean import eucl_dist
 
-# port from trajectory-distance package
+
 
 def lcss(t0, t1, eps):
     """
@@ -47,10 +55,6 @@ def lcss(t0, t1, eps):
             else:
                 C[i,j] = max(C[i,j-1], C[i-1,j])
     lcss = 1-float(C[n0-1,n1-1])/min(n0-1,n1-1)
-
-    # import matplotlib.pyplot as plt
-    # plt.matshow(C)
-    # plt.show()
 
     return lcss
 
