@@ -3,6 +3,7 @@
 import pandas as pd
 import numpy as np
 import os
+from glob import glob
 
 class load():
     # lets just make this a class so we can get specific suggestions rather than having to enter strings
@@ -11,23 +12,47 @@ class load():
         self.subdir = 'data'
 
 
-    def _findFile(self, filename):
+    def _findPath(self, path):
 
-        possibilities = [filename,
-                         self.subdir+os.sep+filename,
-                         '../'+self.subdir+os.sep+filename,
-                         '../../'+self.subdir+os.sep+filename]
+        possibilities = [path,
+                         self.subdir + os.sep + path,
+                         '../' + self.subdir + os.sep + path,
+                         '../../' + self.subdir + os.sep + path]
 
         for possibility in possibilities:
             if os.path.isfile(possibility):
                 return possibility
+            elif os.path.isdir(possibility):
+                return possibility
 
-        raise FileNotFoundError('Unable to find file '+str(filename))
+        raise FileNotFoundError('Unable to find file ' + str(path))
+
+
+    def auslan(self):
+        rootDir = self._findPath('auslan')
+
+        paths = glob(rootDir + '/*')
+        out = {}
+
+        headers = ['x1','y1','z1','roll1','pitch1','yaw1','thumb1','forefinger1','middlefinger1','ringfinger1','littlefinger1',
+                   'x2', 'y2', 'z2', 'roll2', 'pitch2', 'yaw2', 'thumb2', 'forefinger2', 'middlefinger2', 'ringfinger2','littlefinger2']
+
+
+        for path in paths:
+            label = os.path.split(path)[1].replace('.tsd', '')
+
+            out[label] = pd.read_csv(path, delimiter='\t', names=headers)
+
+        return out
+
+
+
+
 
 
     def amazon(self):
         filename = 'AMZN.txt'
-        filepath = self._findFile(filename)
+        filepath = self._findPath(filename)
 
         frame = pd.read_csv(filepath)
 
@@ -37,7 +62,7 @@ class load():
 
     def s_and_p500(self):
         filename ='GSPC.csv'
-        filepath = self._findFile(filename)
+        filepath = self._findPath(filename)
 
         frame = pd.read_csv(filepath)
 
@@ -47,7 +72,7 @@ class load():
 
     def TICC(self):
         filename = 'TICC_example_data.txt'
-        filepath = self._findFile(filename)
+        filepath = self._findPath(filename)
 
         frame = pd.read_csv(filepath, header=None)
         return frame.values
@@ -58,7 +83,7 @@ class load():
         import struct
 
         filename = 'ekg.dat'
-        filepath = self._findFile(filename)
+        filepath = self._findPath(filename)
 
         with open(filepath, 'rb') as input_file:
             data_raw = input_file.read()
