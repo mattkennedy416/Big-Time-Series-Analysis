@@ -110,9 +110,18 @@ def point_to_trajectory(p, t, mdist_p, t_dist, l_t):
     dpt : float,
           Point-to-trajectory distance between p and trajectory t
     """
-    dpt = min(
-        map(lambda it: point_to_seg(p, t[it], t[it + 1], mdist_p[it], mdist_p[it + 1], t_dist[it]), range(l_t - 1)))
-    return dpt
+
+    # this makes use of maps which Python 3 doesn't seem to support as an iterator
+
+    # dpt = min(map(lambda it: point_to_seg(p, t[it], t[it + 1], mdist_p[it], mdist_p[it + 1], t_dist[it]), range(l_t - 1)))
+
+    dpts = []
+    t_dist = list(t_dist)
+    for it in range(l_t-1):
+        val = point_to_seg(p, t[it], t[it + 1], mdist_p[it], mdist_p[it + 1], t_dist[it])
+        dpts.append(val)
+
+    return min(dpts)
 
 
 def circle_line_intersection(px, py, s1x, s1y, s2x, s2y, eps):

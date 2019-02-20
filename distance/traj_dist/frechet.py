@@ -245,13 +245,17 @@ def frechet(P, Q):
     q = len(Q)
 
     mdist = eucl_dist_traj(P, Q)
-    P_dist = map(lambda ip: eucl_dist(P[ip], P[ip + 1]), range(p - 1))
-    Q_dist = map(lambda iq: eucl_dist(Q[iq], Q[iq + 1]), range(q - 1))
+    #P_dist = map(lambda ip: eucl_dist(P[ip], P[ip + 1]), range(p - 1))
+    #Q_dist = map(lambda iq: eucl_dist(Q[iq], Q[iq + 1]), range(q - 1))
+
+    P_dist = [eucl_dist(P[ip], P[ip + 1]) for ip in range(p-1)]
+    Q_dist = [eucl_dist(Q[iq], Q[iq + 1]) for iq in range(q-1)]
+
 
     cc = compute_critical_values(P, Q, p, q, mdist, P_dist, Q_dist)
     eps = cc[0]
     while (len(cc) != 1):
-        m_i = len(cc) / 2 - 1
+        m_i = int(len(cc) / 2 - 1)
         eps = cc[m_i]
         rep = decision_problem(P, Q, p, q, eps, mdist, P_dist, Q_dist)
         if rep:

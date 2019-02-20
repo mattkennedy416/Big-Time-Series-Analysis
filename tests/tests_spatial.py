@@ -6,13 +6,15 @@ from mpl_toolkits.mplot3d import Axes3D
 
 from distance.lcss import lcss
 from distance.discret_frechet import discret_frechet
-from distance.fretchet import frechet
-
+from distance.traj_dist.frechet import frechet
+from distance.traj_dist.sspd import e_sspd
 
 plotSamples = False
+
 runLCSS = False
-runDiscretFretchet = False
-runFretchet = True
+runDiscretFretchet = True
+runFretchet = False
+runSSPD = False
 
 
 allSamples = load().auslan()
@@ -47,29 +49,24 @@ if plotSamples:
 
 
 
+if True in [runSSPD, runFretchet, runDiscretFretchet]:
 
-if runFretchet:
+    if runSSPD:
+        method = e_sspd
+    elif runFretchet:
+        method = frechet
+    elif runDiscretFretchet:
+        method = discret_frechet
+
     compares = [(0,1), (0,3)]
 
     for a,b in compares:
         t0 = samples[a][:, 0:2]
         t1 = samples[b][:, 0:2]
-        dist = frechet(t0, t1)
+        dist = method(t0, t1)
 
         print(a, b, dist)
 
-
-
-
-if runDiscretFretchet:
-    compares = [(0, 1), (0, 3)]
-
-    for a,b in compares:
-        t0 = samples[a][:, 0:2]
-        t1 = samples[b][:, 0:2]
-        dist = discret_frechet(t0, t1)
-
-        print(a, b, dist)
 
 
 
