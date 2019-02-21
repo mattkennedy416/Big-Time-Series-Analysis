@@ -51,11 +51,13 @@ def e_hausdorff(t1, t2):
     mdist = eucl_dist_traj(t1, t2)
     l_t1 = len(t1)
     l_t2 = len(t2)
-    t1_dist = map(lambda it1: eucl_dist(t1[it1], t1[it1 + 1]), range(l_t1 - 1))
-    t2_dist = map(lambda it2: eucl_dist(t2[it2], t2[it2 + 1]), range(l_t2 - 1))
+    # t1_dist = map(lambda it1: eucl_dist(t1[it1], t1[it1 + 1]), range(l_t1 - 1))
+    # t2_dist = map(lambda it2: eucl_dist(t2[it2], t2[it2 + 1]), range(l_t2 - 1))
 
-    h = max(e_directed_hausdorff(t1, t2, mdist, l_t1, l_t2, t2_dist),
-            e_directed_hausdorff(t2, t1, mdist.T, l_t2, l_t1, t1_dist))
+    t1_dist = [eucl_dist(t1[it1], t1[it1 + 1]) for it1 in range(l_t1 -1)]
+    t2_dist = [eucl_dist(t2[it2], t2[it2 + 1]) for it2 in range(l_t2 - 1)]
+
+    h = max(e_directed_hausdorff(t1, t2, mdist, l_t1, l_t2, t2_dist), e_directed_hausdorff(t2, t1, mdist.T, l_t2, l_t1, t1_dist))
     return h
 
 

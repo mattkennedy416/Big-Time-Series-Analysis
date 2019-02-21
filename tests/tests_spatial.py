@@ -1,21 +1,25 @@
 
-
+import numpy as np
 from data.load import load
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
-from distance.lcss import lcss
-from distance.discret_frechet import discret_frechet
+from distance.traj_dist.lcss import e_lcss
+from distance.traj_dist.discret_frechet import discret_frechet
 from distance.traj_dist.frechet import frechet
 from distance.traj_dist.sspd import e_sspd
+from distance.traj_dist.hausdorff import e_hausdorff
+
+from distance.eros import eros
 
 plotSamples = False
 
 runLCSS = False
-runDiscretFretchet = True
+runDiscretFretchet = False
 runFretchet = False
 runSSPD = False
-
+runHausdorff = False
+runEros = True
 
 allSamples = load().auslan()
 
@@ -33,6 +37,7 @@ for label in wantedLabels:
 
     sample = data[['x1','y1','z1']].values
 
+
     samples.append(sample)
 
 
@@ -49,7 +54,15 @@ if plotSamples:
 
 
 
-if True in [runSSPD, runFretchet, runDiscretFretchet]:
+if runEros:
+    simMat = eros(samples)
+
+    print(simMat)
+
+
+
+
+if True in [runSSPD, runFretchet, runDiscretFretchet, runHausdorff]:
 
     if runSSPD:
         method = e_sspd
@@ -57,6 +70,8 @@ if True in [runSSPD, runFretchet, runDiscretFretchet]:
         method = frechet
     elif runDiscretFretchet:
         method = discret_frechet
+    elif runHausdorff:
+        method = e_hausdorff
 
     compares = [(0,1), (0,3)]
 
