@@ -69,9 +69,9 @@ def eros(data):
         evecs.append(np.matrix(_vecs))
 
     # normalize eigen value to compute weight vector (optional)
-    # normEvals = evals
+    #normEvals = evals
     # normalize eigen value
-    # normEvals = normalizeEvals(evals)
+    #normEvals = normalizeEvals(evals)
 
     # compute weight vector (defined in the paper)
     w = weight_vector(evals)

@@ -28,15 +28,15 @@ wantedLabels = ['how-1', 'how-2', 'how-3', 'answer-3']
 
 
 samples = []
+sampleLabels = []
 
-
-for label in wantedLabels:
+for label in list(allSamples.keys()):
     data = allSamples[label]
 
     #x1, y1, z1 = data['x1'].values, data['y1'].values, data['z1'].values
 
     sample = data[['x1','y1','z1']].values
-
+    sampleLabels.append(label)
 
     samples.append(sample)
 
@@ -60,6 +60,14 @@ if runEros:
     print(simMat)
 
 
+wantedPlot = [0, 18, 25, 28]
+wantedPlot, _ = np.where(simMat[:,0] > 0.90)
+
+for ind in wantedPlot:
+    plt.figure()
+    plt.plot(samples[ind])
+    plt.title(sampleLabels[ind])
+plt.show()
 
 
 if True in [runSSPD, runFretchet, runDiscretFretchet, runHausdorff]:
@@ -104,7 +112,7 @@ if runLCSS:
 
     for eps in epss:
         for a, b in compares:
-            dist = lcss(samples[a][:,0:3], samples[b][:,0:3], eps=eps)
+            dist = e_lcss(samples[a][:,0:3], samples[b][:,0:3], eps=eps)
             #print(a, b, dist)
 
             dists[(a,b)].append(dist)
